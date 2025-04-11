@@ -40,7 +40,7 @@ public class PolicyCheckerService : IPolicyCheckerService
         
         var engagementLetterContent = await ReadFileAsync(binaryData, null);
 
-        var policySas = await GetPolicyFile(policyFileName, policyVersion);
+        var policySas = await _azureStorageService.GeneratePolicySasUriAsync(policyFileName, policyVersion);
 
         var policyFileContent = await ReadFileAsync(null, new Uri(policySas));
 
@@ -73,22 +73,6 @@ public class PolicyCheckerService : IPolicyCheckerService
             await _azureStorageService.UploadViolationsFileAsync(binaryData, violationsFileName);
             var violationsSas = await _azureStorageService.GenerateViolationsSasUriAsync(violationsFileName);
         }
-    }
-
-    private async Task<string> GetPolicyFile(string policyFileName, string version)
-    {
-        _logger.LogInformation($"Getting policy file {policyFileName} with version {version}");
-
-        var sasUri = await _azureStorageService.GeneratePolicySasUriAsync(policyFileName, version);
-
-        _logger.LogInformation($"SAS URI for policy file {policyFileName}: {sasUri}");
-
-        if (sasUri == null)
-        {
-            _logger.LogError($"Policy file {policyFileName} not found or version mismatch.");
-        }
-
-        return sasUri == null ? throw new Exception($"Policy file {policyFileName} not found or version mismatch.") : sasUri;
     }
 
     private async Task<string> ReadFileAsync(BinaryData? engagementLetter, Uri? policyFile)

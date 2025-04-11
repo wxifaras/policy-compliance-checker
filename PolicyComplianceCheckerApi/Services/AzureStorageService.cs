@@ -50,74 +50,45 @@ public class AzureStorageService : IAzureStorageService
         await blobClient.SetMetadataAsync(metadata);
         _logger.LogInformation($"Metadata set for blob: {fileName}, version: {version}");
     }
+     
+    public Task<string> GenerateViolationsSasUriAsync(string fileName) =>
+        GenerateSasUriAsync(fileName, _engagementsContainerName);
 
-    public async Task<string> GenerateViolationsSasUriAsync(string fileName)
+    public Task<string> GeneratePolicySasUriAsync(string fileName, string version) =>
+        GenerateSasUriAsync(fileName, _policiesContainer, version);
+
+    private async Task<string> GenerateSasUriAsync(
+    string fileName,
+    string containerName,
+    string? version = null)
     {
-        Uri? sasUri = null;
-        var blobClient = new BlobClient(_storageConnectionString, _engagementsContainerName, fileName);
+        var blobClient = new BlobClient(_storageConnectionString, containerName, fileName);
 
-        if (await blobClient.ExistsAsync())
+        if (!await blobClient.ExistsAsync())
         {
-            var sasBuilder = BuildSasUri(fileName, _engagementsContainerName);
-
-            sasBuilder.SetPermissions(BlobSasPermissions.Read);
-            _logger.LogInformation("Generating SAS URI for file: {FileName}", fileName);
-            sasUri = blobClient.GenerateSasUri(sasBuilder);
-        }
-        else
-        {
-            _logger.LogError("Blob does not exist: {FileName}", fileName);
-            throw new Exception($"Blob does not exist: {fileName}");
+            _logger.LogError("Blob does not exist: {FileName} in container {Container}", fileName, containerName);
+            throw new FileNotFoundException($"Blob does not exist: {fileName} in container {containerName}");
         }
 
-        if (sasUri == null)
+        // Version validation for policy documents
+        if (version != null)
         {
-            _logger.LogError("Failed to generate SAS URI");
-            throw new Exception("Failed to generate SAS URI");
-        }
-
-        return sasUri.ToString();
-    }
-
-    public async Task<string> GeneratePolicySasUriAsync(string fileName, string version)
-    {
-        Uri? sasUri = null;
-        var blobClient = new BlobClient(_storageConnectionString, _policiesContainer, fileName);
-
-        if (await blobClient.ExistsAsync())
-        {
-            // Fetch blob properties to validate metadata
             var properties = await blobClient.GetPropertiesAsync();
-            var metadata = properties.Value.Metadata;
-
-            // Check if the expected version matches the metadata
-            if (metadata.TryGetValue("version", out var actualVersion) && actualVersion == version)
+            if (!properties.Value.Metadata.TryGetValue("version", out var actualVersion) || actualVersion != version)
             {
-                var sasBuilder = BuildSasUri(fileName, _policiesContainer);
-
-                sasBuilder.SetPermissions(BlobSasPermissions.Read);
-                _logger.LogInformation("Generating SAS URI for file: {FileName}", fileName);
-                sasUri = blobClient.GenerateSasUri(sasBuilder);
-            }
-            else
-            {
-                _logger.LogWarning("Blob metadata version mismatch. Expected: {version}, Actual: {ActualVersion}", version, actualVersion);
-                throw new Exception($"Blob metadata version mismatch. Expected: {version}, Actual: {actualVersion}");
+                _logger.LogWarning("Version mismatch. Expected: {Expected}, Actual: {Actual} for {FileName}",
+                    version, actualVersion ?? "<none>", fileName);
+                throw new InvalidOperationException($"Version mismatch. Expected: {version}, Actual: {actualVersion}");
             }
         }
-        else
-        {
-            _logger.LogError("Blob does not exist: {FileName}", fileName);
-            throw new Exception($"Blob does not exist: {fileName}");
-        }
 
-        if (sasUri == null)
-        {
-            _logger.LogError("Failed to generate SAS URI");
-            throw new Exception("Failed to generate SAS URI");
-        }
+        var sasBuilder = BuildSasUri(fileName, containerName);
+        sasBuilder.SetPermissions(BlobSasPermissions.Read);
 
-        return sasUri.ToString();
+        _logger.LogInformation("Generating SAS URI for {FileName} in {Container}", fileName, containerName);
+        var sasUri = blobClient.GenerateSasUri(sasBuilder);
+
+        return sasUri?.ToString() ?? throw new InvalidOperationException("Failed to generate SAS URI");
     }
 
     private static BlobSasBuilder BuildSasUri(string fileName, string container)
