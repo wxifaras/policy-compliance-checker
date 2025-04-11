@@ -76,8 +76,7 @@ public class AzureStorageService : IAzureStorageService
             var properties = await blobClient.GetPropertiesAsync();
             if (!properties.Value.Metadata.TryGetValue("version", out var actualVersion) || actualVersion != version)
             {
-                _logger.LogWarning("Version mismatch. Expected: {Expected}, Actual: {Actual} for {FileName}",
-                    version, actualVersion ?? "<none>", fileName);
+                _logger.LogWarning($"Version mismatch. Expected: {version}, Actual: {actualVersion}");
                 throw new InvalidOperationException($"Version mismatch. Expected: {version}, Actual: {actualVersion}");
             }
         }
