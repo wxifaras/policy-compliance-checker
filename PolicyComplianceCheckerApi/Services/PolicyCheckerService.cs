@@ -102,7 +102,7 @@ public class PolicyCheckerService : IPolicyCheckerService
         return result.Content;
     }
 
-    public List<string> ChunkDocument(string source, int maxChunkSize)
+    private List<string> ChunkDocument(string source, int maxChunkSize)
     {
         var tokens = _tokenizer.CountTokens(source);
         var chunks = new List<string>();
