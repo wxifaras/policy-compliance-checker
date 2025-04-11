@@ -22,7 +22,7 @@ public class AzureStorageService : IAzureStorageService
         _engagementsContainerName = options.Value.EngagementsContainer;
     }
 
-    public async Task UploadViolationsFileAsync(BinaryData file, string fileName)
+    public async Task UploadFileToEngagementsContainerAsync(BinaryData file, string fileName)
     {
         var blobServiceClient = new BlobServiceClient(_storageConnectionString);
         var blobContainer = blobServiceClient.GetBlobContainerClient(_engagementsContainerName);

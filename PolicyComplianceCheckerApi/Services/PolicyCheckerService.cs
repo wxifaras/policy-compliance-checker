@@ -77,9 +77,17 @@ public class PolicyCheckerService : IPolicyCheckerService
         }
         else
         {
+            // Upload violations markdown report and engagement letter to Azure Storage
             var violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter.FileName)}_Violations.MD";
+
             binaryData = BinaryData.FromString(allViolations.ToString());
-            await _azureStorageService.UploadViolationsFileAsync(binaryData, violationsFileName);
+
+            await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, violationsFileName);
+
+            binaryData = BinaryData.FromString(engagementLetterContent);
+
+            await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, engagementLetter.FileName);
+
             violationsSas = await _azureStorageService.GenerateViolationsSasUriAsync(violationsFileName);
         }
 
