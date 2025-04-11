@@ -62,15 +62,24 @@ public class PolicyCheckerService : IPolicyCheckerService
             }
         }
 
-        // TODO: need to determine how to return the result. Most likely to SigalR
-        var finalResult = allViolations.ToString();
+        if (allViolations.Length == 0)
+        {
+            _logger.LogInformation($"No violations found in the engagement letter. {engagementLetter.FileName}");
+        }
+        else
+        {
+            var violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter.FileName)}_Violations.MD";
+            binaryData = BinaryData.FromString(allViolations.ToString());
+            await _azureStorageService.UploadViolationsFileAsync(binaryData, violationsFileName);
+            var violationsSas = await _azureStorageService.GenerateViolationsSasUriAsync(violationsFileName);
+        }
     }
 
     private async Task<string> GetPolicyFile(string policyFileName, string version)
     {
         _logger.LogInformation($"Getting policy file {policyFileName} with version {version}");
 
-        var sasUri = await _azureStorageService.GenerateSasUriAsync(policyFileName, version);
+        var sasUri = await _azureStorageService.GeneratePolicySasUriAsync(policyFileName, version);
 
         _logger.LogInformation($"SAS URI for policy file {policyFileName}: {sasUri}");
 

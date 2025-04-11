@@ -2,7 +2,8 @@
 
 public interface IAzureStorageService
 {
-    Task<string> GenerateSasUriAsync(string fileName, string version);
-
+    Task<string> GeneratePolicySasUriAsync(string fileName, string version);
     Task UploadPolicyAsync(Stream imageStream, string fileName, string version);
+    Task UploadViolationsFileAsync(BinaryData file, string fileName);
+    Task<string> GenerateViolationsSasUriAsync(string fileName);
 }

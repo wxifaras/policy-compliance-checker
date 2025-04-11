@@ -16,7 +16,8 @@ public record CorePrompts
     public static string GetUserPrompt(string policyChunk)
     {
         var userPrompt = $@"Please analyze the Engagement Letter against the following company policy: {policyChunk}. 
-                          Return only the violations found. Be specific about which part of the policy is violated by which part of the SOW";
+                            Return only the violations found and be specific about which part of the policy is violated by which part of the Engagement Letter.
+                            Return the result in markdown format for readability, but DO NOT include any code blocks, backticks, or markdown syntax indicators like ```.";
 
         return userPrompt;
     }

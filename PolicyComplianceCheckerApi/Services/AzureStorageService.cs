@@ -9,20 +9,34 @@ public class AzureStorageService : IAzureStorageService
 {
     private readonly string _storageConnectionString;
     private readonly ILogger<AzureStorageService> _logger;
-    private readonly string _containerName;
+    private readonly string _policiesContainer;
+    private readonly string _engagementsContainerName;
 
-    public AzureStorageService(IOptions<AzureStorageOptions> options,
+    public AzureStorageService(
+        IOptions<AzureStorageOptions> options,
         ILogger<AzureStorageService> logger)
     {
         _storageConnectionString = options.Value.StorageConnectionString;
-        _containerName = options.Value.PoliciesContainer;
+        _policiesContainer = options.Value.PoliciesContainer;
         _logger = logger;
+        _engagementsContainerName = options.Value.EngagementsContainer;
+    }
+
+    public async Task UploadViolationsFileAsync(BinaryData file, string fileName)
+    {
+        var blobServiceClient = new BlobServiceClient(_storageConnectionString);
+        var blobContainer = blobServiceClient.GetBlobContainerClient(_engagementsContainerName);
+        var blobClient = blobContainer.GetBlobClient(fileName);
+
+        _logger.LogInformation($"Uploading File. {fileName}");
+
+        await blobClient.UploadAsync(file, overwrite: true);
     }
 
     public async Task UploadPolicyAsync(Stream imageStream, string fileName, string version)
     {
         var blobServiceClient = new BlobServiceClient(_storageConnectionString);
-        var blobContainer = blobServiceClient.GetBlobContainerClient(_containerName);
+        var blobContainer = blobServiceClient.GetBlobContainerClient(_policiesContainer);
         var blobClient = blobContainer.GetBlobClient(fileName);
 
         _logger.LogInformation($"Uploading Policy File. {fileName}");
@@ -37,10 +51,27 @@ public class AzureStorageService : IAzureStorageService
         _logger.LogInformation($"Metadata set for blob: {fileName}, version: {version}");
     }
 
-    public async Task<string> GenerateSasUriAsync(string fileName, string version)
+    public async Task<string> GenerateViolationsSasUriAsync(string fileName)
     {
         Uri? sasUri = null;
-        var blobClient = new BlobClient(_storageConnectionString, _containerName, fileName);
+        var blobClient = new BlobClient(_storageConnectionString, _engagementsContainerName, fileName);
+
+        if (await blobClient.ExistsAsync())
+        {
+            var sasBuilder = BuildSasUri(fileName, _engagementsContainerName);
+
+            sasBuilder.SetPermissions(BlobSasPermissions.Read);
+            _logger.LogInformation("Generating SAS URI for file: {FileName}", fileName);
+            sasUri = blobClient.GenerateSasUri(sasBuilder);
+        }
+
+        return sasUri.ToString();
+    }
+
+    public async Task<string> GeneratePolicySasUriAsync(string fileName, string version)
+    {
+        Uri? sasUri = null;
+        var blobClient = new BlobClient(_storageConnectionString, _policiesContainer, fileName);
 
         if (await blobClient.ExistsAsync())
         {
@@ -51,13 +82,7 @@ public class AzureStorageService : IAzureStorageService
             // Check if the expected version matches the metadata
             if (metadata.TryGetValue("version", out var actualVersion) && actualVersion == version)
             {
-                var sasBuilder = new BlobSasBuilder
-                {
-                    BlobContainerName = _containerName,
-                    BlobName = fileName,
-                    Resource = "b",
-                    ExpiresOn = DateTimeOffset.UtcNow.AddDays(1)
-                };
+                var sasBuilder = BuildSasUri(fileName, _policiesContainer);
 
                 sasBuilder.SetPermissions(BlobSasPermissions.Read);
                 _logger.LogInformation("Generating SAS URI for file: {FileName}", fileName);
@@ -82,5 +107,16 @@ public class AzureStorageService : IAzureStorageService
         }
 
         return sasUri.ToString();
+    }
+
+    private static BlobSasBuilder BuildSasUri(string fileName, string container)
+    {
+        return new BlobSasBuilder
+        {
+            BlobContainerName = container,
+            BlobName = fileName,
+            Resource = "b",
+            ExpiresOn = DateTimeOffset.UtcNow.AddDays(1)
+        };
     }
 }
