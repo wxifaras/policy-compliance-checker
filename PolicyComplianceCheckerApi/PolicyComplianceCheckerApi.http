@@ -1,6 +1,8 @@
 @PolicyComplianceCheckerApi_HostAddress = http://localhost:5055
 
-GET {{PolicyComplianceCheckerApi_HostAddress}}/weatherforecast/
+GET {{PolicyComplianceCheckerApi_HostAddress}}/admin/
 Accept: application/json
 
+GET {{PolicyComplianceCheckerApi_HostAddress}}/policychecker/
+Accept: application/json
 ###
