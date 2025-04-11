@@ -13,7 +13,8 @@ public class PolicyCheckerController : ControllerBase
     private readonly ILogger<PolicyCheckerController> _logger;
     private readonly IPolicyCheckerService _policyCheckerService;
 
-    public PolicyCheckerController(ILogger<PolicyCheckerController> logger,
+    public PolicyCheckerController(
+        ILogger<PolicyCheckerController> logger,
         IPolicyCheckerService policyCheckerService)
     {
         _logger = logger;
@@ -29,7 +30,8 @@ public class PolicyCheckerController : ControllerBase
     {
         try
         {
-            await _policyCheckerService.CheckPolicyAsync(request.EngagementLetter, request.PolicyFileName, request.PolicyVersion);
+            var policySas = await _policyCheckerService.CheckPolicyAsync(request.EngagementLetter, request.PolicyFileName, request.PolicyVersion);
+            // TODO: Send the violationsSas to the user via SignalR Service.
 
             return Ok();
         }

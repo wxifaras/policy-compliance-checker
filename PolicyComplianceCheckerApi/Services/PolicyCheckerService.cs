@@ -32,7 +32,14 @@ public class PolicyCheckerService : IPolicyCheckerService
         _tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
     }
 
-    public async Task CheckPolicyAsync(IFormFile engagementLetter, string policyFileName, string policyVersion)
+    /// <summary>
+    /// Checks the policy compliance of the engagement letter against the policy file.
+    /// </summary>
+    /// <param name="engagementLetter">Engagement Letter</param>
+    /// <param name="policyFileName">Policy File</param>
+    /// <param name="policyVersion">Policy File Version</param>
+    /// <returns>SAS Uri of Policy Violations Markdown Report</returns>
+    public async Task<string> CheckPolicyAsync(IFormFile engagementLetter, string policyFileName, string policyVersion)
     {
         using Stream fileStream = engagementLetter.OpenReadStream();
         
@@ -62,19 +69,20 @@ public class PolicyCheckerService : IPolicyCheckerService
             }
         }
 
+        var violationsSas = string.Empty;
         if (allViolations.Length == 0)
         {
-            _logger.LogInformation($"No violations found in the engagement letter. {engagementLetter.FileName}");
+            _logger.LogInformation($"No violations found in the engagement letter. {engagementLetter.FileName} for given policy {policyFileName}.");
         }
         else
         {
             var violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter.FileName)}_Violations.MD";
             binaryData = BinaryData.FromString(allViolations.ToString());
             await _azureStorageService.UploadViolationsFileAsync(binaryData, violationsFileName);
-            var violationsSas = await _azureStorageService.GenerateViolationsSasUriAsync(violationsFileName);
-
-            // TODO: Send the violationsSas to the user via SignalR Service.
+            violationsSas = await _azureStorageService.GenerateViolationsSasUriAsync(violationsFileName);
         }
+
+        return violationsSas;
     }
 
     private async Task<string> ReadFileAsync(BinaryData? engagementLetter, Uri? policyFile)
