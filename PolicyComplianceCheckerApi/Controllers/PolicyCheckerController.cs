@@ -30,8 +30,8 @@ public class PolicyCheckerController : ControllerBase
     {
         try
         {
-            var policyViolationsSas = await _policyCheckerService.CheckPolicyAsync(request.EngagementLetter, request.PolicyFileName, request.PolicyVersion);
-            _logger.LogInformation($"Policy compliance check completed. SAS URI: {policyViolationsSas}");
+            var violationsSas = await _policyCheckerService.CheckPolicyAsync(request.EngagementLetter, request.PolicyFileName, request.PolicyVersion);
+            _logger.LogInformation($"Policy compliance check completed. SAS URI: {violationsSas}");
             // TODO: Send the violationsSas to the user via SignalR Service.
 
             return Ok();
