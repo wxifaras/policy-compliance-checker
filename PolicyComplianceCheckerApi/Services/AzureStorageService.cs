@@ -64,6 +64,17 @@ public class AzureStorageService : IAzureStorageService
             _logger.LogInformation("Generating SAS URI for file: {FileName}", fileName);
             sasUri = blobClient.GenerateSasUri(sasBuilder);
         }
+        else
+        {
+            _logger.LogError("Blob does not exist: {FileName}", fileName);
+            throw new Exception($"Blob does not exist: {fileName}");
+        }
+
+        if (sasUri == null)
+        {
+            _logger.LogError("Failed to generate SAS URI");
+            throw new Exception("Failed to generate SAS URI");
+        }
 
         return sasUri.ToString();
     }
