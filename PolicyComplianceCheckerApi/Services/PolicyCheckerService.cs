@@ -72,6 +72,8 @@ public class PolicyCheckerService : IPolicyCheckerService
             binaryData = BinaryData.FromString(allViolations.ToString());
             await _azureStorageService.UploadViolationsFileAsync(binaryData, violationsFileName);
             var violationsSas = await _azureStorageService.GenerateViolationsSasUriAsync(violationsFileName);
+
+            // TODO: Send the violationsSas to the user via SignalR Service.
         }
     }
 
