@@ -106,15 +106,26 @@ public class PolicyCheckerService : IPolicyCheckerService
         return result.Content;
     }
 
-    private List<string> ChunkDocument(string source, int availableTokens)
+    /// <summary>
+    /// Splits the document into chunks of approximately the size of the available tokens remaining in the context window, which is
+    /// determined by subtracing the number of tokens of the engagement letter and a buffer of a specified number of tokens from
+    /// the total tokens in the context window.
+    /// </summary>
+    /// <param name="source">Text of the source document</param>
+    /// <param name="maxChunkSize">The maximum tokens a chunk can have based on remaining tokens in the context window</param>
+    /// <returns>A list of tokens about the size of availableTokens which the source document is broken up into</returns>
+    private List<string> ChunkDocument(string source, int maxChunkSize)
     {
-        var tokens = _tokenizer.CountTokens(source);
         var chunks = new List<string>();
+
+        // return a list of integers where each integer represents a token in the tokenizer's vocabulary
         var tokenIds = _tokenizer.EncodeToIds(source).ToList();
 
-        for (int i = 0; i < tokens; i += availableTokens)
+        // Go through all tokens and pull out as many tokens as will fit into the max chunk size
+        for (int i = 0; i < tokenIds.Count; i += maxChunkSize)
         {
-            var chunkTokens = tokenIds.GetRange(i, Math.Min(availableTokens, tokens - i));
+            // get the tokens from the last position (i) in the list of tokens up through the max chunk size or the remaining tokens (tokens - i) so we don't go beyond the list bounds
+            var chunkTokens = tokenIds.GetRange(i, Math.Min(maxChunkSize, tokenIds.Count - i));
             var chunk = _tokenizer.Decode(chunkTokens);
             chunks.Add(chunk);
         }
