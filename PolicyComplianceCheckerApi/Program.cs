@@ -64,7 +64,7 @@ builder.Services.AddSingleton<IAzureOpenAIService>(sp =>
     return new AzureOpenAIService(azureOpenAIOptions, logger);
 });
 
-builder.Services.AddScoped<IPolicyCheckerService>(sp =>
+builder.Services.AddSingleton<IPolicyCheckerService>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<PolicyCheckerService>>();
     var azureOpenAIService = sp.GetRequiredService<IAzureOpenAIService>();
@@ -74,6 +74,8 @@ builder.Services.AddScoped<IPolicyCheckerService>(sp =>
     return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions);
 });
 
+builder.Services.AddHostedService<PolicyCheckerQueueService>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -82,7 +84,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Policy Compliance Checker API V1");
+        options.RoutePrefix = string.Empty; // Serve Swagger UI at the root
+    });
 }
 
 // Configure the HTTP request pipeline.
