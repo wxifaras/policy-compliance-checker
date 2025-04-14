@@ -10,10 +10,7 @@ public record CosmosDbOptions
     public string DatabaseName { get; set; }
 
     [Required]
-    public string ChatHistoryContainerName { get; set; }
-
-    [Required]
-    public string LoggingContainerName { get; set; }
+    public string ContainerName { get; set; }
 
     [Required]
     public string AccountUri { get; set; }

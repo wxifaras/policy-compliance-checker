@@ -4,10 +4,11 @@ namespace PolicyComplianceCheckerApi.Models;
 
 public record PolicyCheckerRequest
 {
-    public string UserId { get; set; } = string.Empty;
+    [Required]
+    public string UserId { get; set; }
 
     [Required]
-    public IFormFile EngagementLetter { get; set; }
+    public string EngagementLetter { get; set; }
 
     [Required]
     public string PolicyFileName { get; set; }

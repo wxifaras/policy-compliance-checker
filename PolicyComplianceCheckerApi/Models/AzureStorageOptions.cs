@@ -8,8 +8,13 @@ public record AzureStorageOptions
 
     [Required]
     public string PoliciesContainer { get; set; }
+    
     [Required]
     public string EngagementsContainer { get; set; }
+
+    [Required]
+    public string QueueName { get; set; }
+
     [Required]
     public string StorageConnectionString { get; set; }
 }

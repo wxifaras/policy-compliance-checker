@@ -1,7 +1,11 @@
 ﻿using Asp.Versioning;
+using Azure.Storage.Queues;
+using concierge_agent_api.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using PolicyComplianceCheckerApi.Models;
 using PolicyComplianceCheckerApi.Services;
+using System.Text.Json;
 
 namespace PolicyComplianceCheckerApi.Controllers;
 
@@ -11,28 +15,28 @@ namespace PolicyComplianceCheckerApi.Controllers;
 public class PolicyCheckerController : ControllerBase
 {
     private readonly ILogger<PolicyCheckerController> _logger;
-    private readonly IPolicyCheckerService _policyCheckerService;
+    private readonly QueueClient _queueClient;
 
     public PolicyCheckerController(
         ILogger<PolicyCheckerController> logger,
-        IPolicyCheckerService policyCheckerService)
+        IOptions<AzureStorageOptions> storageOptions)
     {
         _logger = logger;
-        _policyCheckerService = policyCheckerService;
+        _queueClient = new QueueClient(storageOptions.Value.StorageConnectionString, storageOptions.Value.QueueName);
     }
 
     [MapToApiVersion("1.0")]
-    [HttpPost("upload")]
+    [HttpPost("enqueue-policy-check")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CheckPolicy([FromForm] PolicyCheckerRequest request)
+    public async Task<IActionResult> EnqueuePolicyCheckAsync([FromForm] PolicyCheckerRequest request)
     {
         try
         {
-            var violationsSas = await _policyCheckerService.CheckPolicyAsync(request.EngagementLetter, request.PolicyFileName, request.PolicyVersion);
-            _logger.LogInformation($"Policy compliance check completed. SAS URI: {violationsSas}");
-            // TODO: Send the violationsSas to the user via SignalR Service.
+            var message = JsonSerializer.Serialize(request);
+
+            await _queueClient.SendMessageAsync(message);
 
             return Ok();
         }

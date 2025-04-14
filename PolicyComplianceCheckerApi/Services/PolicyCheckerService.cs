@@ -3,6 +3,7 @@ using Azure.AI.DocumentIntelligence;
 using Microsoft.Extensions.Options;
 using Microsoft.ML.Tokenizers;
 using PolicyComplianceCheckerApi.Models;
+using System;
 using System.Text;
 
 namespace PolicyComplianceCheckerApi.Services;
@@ -12,9 +13,8 @@ public class PolicyCheckerService : IPolicyCheckerService
     private ILogger<PolicyCheckerService> _logger;
     private IAzureOpenAIService _azureOpenAIService;
     private readonly IAzureStorageService _azureStorageService;
-    private readonly string _docIntelligenceEndpoint;
-    private readonly string _docIntelligenceApiKey;
     private readonly TiktokenTokenizer _tokenizer;
+    private readonly DocumentIntelligenceClient _documentIntelligenceClient;
 
     private const int MAX_TOKENS = 50000;
 
@@ -27,9 +27,12 @@ public class PolicyCheckerService : IPolicyCheckerService
         _logger = logger;
         _azureOpenAIService = azureOpenAIService;
         _azureStorageService = azureStorageService;
-        _docIntelligenceEndpoint = docIntelOptions.Value.Endpoint;
-        _docIntelligenceApiKey = docIntelOptions.Value.ApiKey;
         _tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
+
+        _documentIntelligenceClient = new DocumentIntelligenceClient(
+            new Uri(docIntelOptions.Value.Endpoint),
+            new AzureKeyCredential(docIntelOptions.Value.ApiKey)
+        );
     }
 
     /// <summary>
@@ -39,20 +42,15 @@ public class PolicyCheckerService : IPolicyCheckerService
     /// <param name="policyFileName">Policy File</param>
     /// <param name="policyVersion">Policy File Version</param>
     /// <returns>SAS Uri of Policy Violations Markdown Report</returns>
-    public async Task<string> CheckPolicyAsync(
-        IFormFile engagementLetter,
-        string policyFileName,
-        string policyVersion)
+    public async Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string policyVersion)
     {
-        using Stream fileStream = engagementLetter.OpenReadStream();
-        
-        var binaryData = BinaryData.FromStream(fileStream);
-        
-        var engagementLetterContent = await ReadFileAsync(binaryData, null);
+        var engagementSasUri = await _azureStorageService.GetEngagementSasUriAsync(engagementLetter);
 
-        var policySas = await _azureStorageService.GeneratePolicySasUriAsync(policyFileName, policyVersion);
+        var engagementLetterContent = await ReadDocumentContentAsync(new Uri(engagementSasUri));
 
-        var policyFileContent = await ReadFileAsync(null, new Uri(policySas));
+        var policySas = await _azureStorageService.GetPolicySasUriAsync(policyFileName, policyVersion);
+
+        var policyFileContent = await ReadDocumentContentAsync(new Uri(policySas));
 
         var engagementLetterTokens = _tokenizer.CountTokens(engagementLetterContent);
 
@@ -62,7 +60,7 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         var allViolations = new StringBuilder();
 
-        foreach(var policyChunk in policyChunks)
+        foreach (var policyChunk in policyChunks)
         {
             _logger.LogInformation($"Analyzing policy chunk of size {policyChunk.Length} tokens.");
             var violation = await _azureOpenAIService.AnalyzePolicy(engagementLetterContent, policyChunk);
@@ -76,52 +74,47 @@ public class PolicyCheckerService : IPolicyCheckerService
         var violationsSas = string.Empty;
         if (allViolations.Length == 0)
         {
-            _logger.LogInformation($"No violations found in the engagement letter. {engagementLetter.FileName} for given policy {policyFileName}.");
+            _logger.LogInformation($"No violations found in the engagement letter. {engagementLetter} for given policy {policyFileName}.");
         }
         else
         {
             // Upload violations markdown report and engagement letter to Azure Storage
-            var violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter.FileName)}_Violations.MD";
+            var violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
 
-            binaryData = BinaryData.FromString(allViolations.ToString());
+            var binaryData = BinaryData.FromString(allViolations.ToString());
 
             await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, violationsFileName);
 
             binaryData = BinaryData.FromString(engagementLetterContent);
 
-            await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, engagementLetter.FileName);
-
-            violationsSas = await _azureStorageService.GenerateViolationsSasUriAsync(violationsFileName);
+            violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
         }
 
         return violationsSas;
     }
 
-    private async Task<string> ReadFileAsync(BinaryData? engagementLetter, Uri? policyFile)
+    private async Task<string> ReadDocumentContentAsync(Uri documentUri)
     {
-        var documentIntelligenceClient = new DocumentIntelligenceClient(
-            new Uri(_docIntelligenceEndpoint),
-            new AzureKeyCredential(_docIntelligenceApiKey)
+        Operation<AnalyzeResult> operation = await _documentIntelligenceClient.AnalyzeDocumentAsync(
+            WaitUntil.Completed,
+            "prebuilt-read",
+            documentUri
         );
-
-        Operation<AnalyzeResult> operation = policyFile != null
-            ? await documentIntelligenceClient.AnalyzeDocumentAsync(WaitUntil.Completed, "prebuilt-read", policyFile)
-            : await documentIntelligenceClient.AnalyzeDocumentAsync(WaitUntil.Completed, "prebuilt-read", engagementLetter);
 
         AnalyzeResult result = operation.Value;
 
         return result.Content;
     }
 
-    private List<string> ChunkDocument(string source, int maxChunkSize)
+    private List<string> ChunkDocument(string source, int availableTokens)
     {
         var tokens = _tokenizer.CountTokens(source);
         var chunks = new List<string>();
         var tokenIds = _tokenizer.EncodeToIds(source).ToList();
 
-        for (int i = 0; i < tokens; i += maxChunkSize)
+        for (int i = 0; i < tokens; i += availableTokens)
         {
-            var chunkTokens = tokenIds.GetRange(i, Math.Min(maxChunkSize, tokens - i));
+            var chunkTokens = tokenIds.GetRange(i, Math.Min(availableTokens, tokens - i));
             var chunk = _tokenizer.Decode(chunkTokens);
             chunks.Add(chunk);
         }
