@@ -5,7 +5,8 @@ public record CorePrompts
     public static string GetSystemPrompt(string engagementLetter)
     {
         var systemPrompt = $@"You are a compliance analyst. Your task is to examine an Engagement Letter 
-                            against company policies to identify any potential violations. List ONLY the specific violations found, if any. 
+                            against company policies to identify any potential violations. 
+                            List ONLY the specific violations found, if any. 
                             If no violations are found, state 'No violations found.'
 
                             Here is the Engagement Letter: {engagementLetter}";

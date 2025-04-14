@@ -39,7 +39,10 @@ public class PolicyCheckerService : IPolicyCheckerService
     /// <param name="policyFileName">Policy File</param>
     /// <param name="policyVersion">Policy File Version</param>
     /// <returns>SAS Uri of Policy Violations Markdown Report</returns>
-    public async Task<string> CheckPolicyAsync(IFormFile engagementLetter, string policyFileName, string policyVersion)
+    public async Task<string> CheckPolicyAsync(
+        IFormFile engagementLetter,
+        string policyFileName,
+        string policyVersion)
     {
         using Stream fileStream = engagementLetter.OpenReadStream();
         

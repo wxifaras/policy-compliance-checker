@@ -22,7 +22,7 @@ public class PolicyCheckerController : ControllerBase
     }
 
     [MapToApiVersion("1.0")]
-    [HttpPost("compliance")]
+    [HttpPost("upload")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]

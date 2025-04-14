@@ -40,9 +40,10 @@ builder.Services.AddOptions<AzureStorageOptions>()
            .Bind(builder.Configuration.GetSection(AzureStorageOptions.AzureStorage))
            .ValidateDataAnnotations();
 
-builder.Services.AddOptions<CosmosDbOptions>()
-           .Bind(builder.Configuration.GetSection(CosmosDbOptions.CosmosDb))
-           .ValidateDataAnnotations();
+// TODO: Will update once containers are created.
+//builder.Services.AddOptions<CosmosDbOptions>()
+//           .Bind(builder.Configuration.GetSection(CosmosDbOptions.CosmosDb))
+//           .ValidateDataAnnotations();
 
 builder.Services.AddOptions<AzureDocIntelOptions>()
            .Bind(builder.Configuration.GetSection(AzureDocIntelOptions.AzureDocIntel))

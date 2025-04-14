@@ -9,4 +9,7 @@ public record PolicyAdminRequest
 
     [Required]
     public string PolicyVersion { get; set; }
+
+    [Required]
+    public string UserId { get; set; }
 }
