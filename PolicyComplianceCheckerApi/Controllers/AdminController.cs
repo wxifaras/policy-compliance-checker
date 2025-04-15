@@ -53,4 +53,25 @@ public class AdminController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
+
+    [MapToApiVersion("1.0")]
+    [HttpGet("policy-logs")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetPolicyLogs([FromQuery] string? userId = null)
+    {
+        try
+        {
+            var logs = await _cosmosDBService.GetPolicyComplianceLogs("Policy", userId);
+            return Ok(logs);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving policy logs.");
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+    }
+
+
 }

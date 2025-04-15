@@ -13,7 +13,7 @@ public class AzureCosmosDBService : IAzureCosmosDBService
     private readonly ILogger<AzureCosmosDBService> _logger;
 
     public AzureCosmosDBService(
-        IOptions<CosmosDbOptions> options, 
+        IOptions<CosmosDbOptions> options,
         ILogger<AzureCosmosDBService> logger)
     {
         CosmosClient cosmosClient = new(
@@ -26,8 +26,8 @@ public class AzureCosmosDBService : IAzureCosmosDBService
                })
        );
 
-       _logContainer = cosmosClient.GetContainer(options.Value.DatabaseName, options.Value.ContainerName);
-       _logger = logger;
+        _logContainer = cosmosClient.GetContainer(options.Value.DatabaseName, options.Value.ContainerName);
+        _logger = logger;
     }
 
     public async Task<PolicyLog> AddPolicyComplianceLogAsync(PolicyLog log)
@@ -44,21 +44,26 @@ public class AzureCosmosDBService : IAzureCosmosDBService
         return response.Resource;
     }
 
-    public async Task<List<PolicyLog>> GetPolicyComplianceLogs(string documentType, string userId)
+    public async Task<List<PolicyLog>> GetPolicyComplianceLogs(string documentType, string? userId = null)
     {
-        var policyComplianceLogs = new List<PolicyLog>();
+        var queryable = _logContainer.GetItemLinqQueryable<PolicyLog>(allowSynchronousQueryExecution: false)
+            .Where(p => p.DocumentType == documentType);
 
-        var query = _logContainer.GetItemLinqQueryable<PolicyLog>()
-            .Where(p => p.UserId == userId && p.DocumentType == documentType).ToFeedIterator();
+        if (!string.IsNullOrEmpty(userId))
+        {
+            queryable = queryable.Where(p => p.UserId == userId);
+        }
+
+        var query = queryable.ToFeedIterator();
+        var policyComplianceLogs = new List<PolicyLog>();
 
         while (query.HasMoreResults)
         {
-            foreach (var item in await query.ReadNextAsync())
-            {
-                // Process each item
-            }
+            var response = await query.ReadNextAsync();
+            policyComplianceLogs.AddRange(response);
         }
 
         return policyComplianceLogs;
     }
+
 }
