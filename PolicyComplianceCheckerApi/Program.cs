@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using concierge_agent_api.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using PolicyComplianceCheckerApi.Models;
 using PolicyComplianceCheckerApi.Services;
@@ -40,14 +41,20 @@ builder.Services.AddOptions<AzureStorageOptions>()
            .Bind(builder.Configuration.GetSection(AzureStorageOptions.AzureStorage))
            .ValidateDataAnnotations();
 
-// TODO: Will update once containers are created.
-//builder.Services.AddOptions<CosmosDbOptions>()
-//           .Bind(builder.Configuration.GetSection(CosmosDbOptions.CosmosDb))
-//           .ValidateDataAnnotations();
+builder.Services.AddOptions<CosmosDbOptions>()
+           .Bind(builder.Configuration.GetSection(CosmosDbOptions.CosmosDb))
+           .ValidateDataAnnotations();
 
 builder.Services.AddOptions<AzureDocIntelOptions>()
            .Bind(builder.Configuration.GetSection(AzureDocIntelOptions.AzureDocIntel))
            .ValidateDataAnnotations();
+
+builder.Services.AddSingleton<IAzureCosmosDBService>(sp =>
+{
+    var cosmosDbOptions = sp.GetRequiredService<IOptions<CosmosDbOptions>>();
+    var logger = sp.GetRequiredService<ILogger<AzureCosmosDBService>>();
+    return new AzureCosmosDBService(cosmosDbOptions, logger);
+});
 
 builder.Services.AddSingleton<IAzureStorageService>(sp =>
 {
@@ -70,8 +77,9 @@ builder.Services.AddSingleton<IPolicyCheckerService>(sp =>
     var azureOpenAIService = sp.GetRequiredService<IAzureOpenAIService>();
     var azureStorageService = sp.GetRequiredService<IAzureStorageService>();
     var azureDocIntelOptions = sp.GetRequiredService<IOptions<AzureDocIntelOptions>>();
+    var cosmosDbService = sp.GetRequiredService<IAzureCosmosDBService>();
 
-    return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions);
+    return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions, cosmosDbService);
 });
 
 builder.Services.AddHostedService<PolicyCheckerQueueService>();

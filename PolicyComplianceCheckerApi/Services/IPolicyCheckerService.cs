@@ -2,5 +2,5 @@
 
 public interface IPolicyCheckerService
 {
-    Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId);
+    Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId, string userId);
 }

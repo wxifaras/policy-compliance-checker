@@ -43,7 +43,8 @@ public class PolicyCheckerQueueService : BackgroundService
                     var violationsSas = await _policyCheckerService.CheckPolicyAsync(
                             policyRequest.EngagementLetter,
                             policyRequest.PolicyFileName,
-                            policyRequest.VersionId
+                            policyRequest.VersionId,
+                            policyRequest.UserId
                         );
 
                     // TODO: violationsSas to SignalR hub
