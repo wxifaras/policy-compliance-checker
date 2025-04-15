@@ -29,8 +29,8 @@ public class AdminController : ControllerBase
     {
         try
         {
-            await _azureStorageService.UploadPolicyAsync(request.Policy.OpenReadStream(), request.Policy.FileName, request.PolicyVersion);
-            return Ok();
+            var version = await _azureStorageService.UploadPolicyAsync(request.Policy.OpenReadStream(), request.Policy.FileName);
+            return Ok(version);
         }
         catch (Exception ex)
         {

@@ -40,15 +40,15 @@ public class PolicyCheckerService : IPolicyCheckerService
     /// </summary>
     /// <param name="engagementLetter">Engagement Letter</param>
     /// <param name="policyFileName">Policy File</param>
-    /// <param name="policyVersion">Policy File Version</param>
+    /// <param name="versionId">VersionId of the blob</param>
     /// <returns>SAS Uri of Policy Violations Markdown Report</returns>
-    public async Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string policyVersion)
+    public async Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId)
     {
         var engagementSasUri = await _azureStorageService.GetEngagementSasUriAsync(engagementLetter);
 
         var engagementLetterContent = await ReadDocumentContentAsync(new Uri(engagementSasUri));
 
-        var policySas = await _azureStorageService.GetPolicySasUriAsync(policyFileName, policyVersion);
+        var policySas = await _azureStorageService.GetPolicySasUriAsync(policyFileName, versionId);
 
         var policyFileContent = await ReadDocumentContentAsync(new Uri(policySas));
 

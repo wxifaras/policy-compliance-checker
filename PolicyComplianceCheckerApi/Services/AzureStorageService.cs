@@ -3,6 +3,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
 using concierge_agent_api.Models;
 using Microsoft.Extensions.Options;
+using PolicyComplianceCheckerApi.Models;
 
 namespace PolicyComplianceCheckerApi.Services;
 
@@ -34,7 +35,7 @@ public class AzureStorageService : IAzureStorageService
         await blobClient.UploadAsync(file, overwrite: true);
     }
 
-    public async Task UploadPolicyAsync(Stream imageStream, string fileName, string version)
+    public async Task<string> UploadPolicyAsync(Stream imageStream, string fileName)
     {
         var blobServiceClient = new BlobServiceClient(_storageConnectionString);
         var blobContainer = blobServiceClient.GetBlobContainerClient(_policiesContainer);
@@ -44,14 +45,9 @@ public class AzureStorageService : IAzureStorageService
 
         var response = await blobClient.UploadAsync(imageStream, overwrite: true);
 
-        var tags = new Dictionary<string, string>
-        {
-            { "version", version }
-        };
+        _logger.LogInformation($"tags set for blob: {fileName}, version: {response.Value.VersionId}");
 
-        await blobClient.SetTagsAsync(tags);
-
-        _logger.LogInformation($"tags set for blob: {fileName}, version: {version}");
+        return response.Value.VersionId;
     }
      
     public async Task<string> GetEngagementSasUriAsync(string fileName)
@@ -73,39 +69,51 @@ public class AzureStorageService : IAzureStorageService
         return sasUri?.ToString() ?? throw new InvalidOperationException("Failed to generate SAS URI");
     }
 
-    public async Task<string> GetPolicySasUriAsync(string fileName, string version)
+    public async Task<string> GetPolicySasUriAsync(string fileName, string versionId)
     {
-        // Construct the tag expression to find the blob with the specified version
-        var tagExpression = $"\"version\" = '{version}'";
-        var containerClient = new BlobContainerClient(_storageConnectionString, _policiesContainer);
+        var blobClient = new BlobClient(_storageConnectionString, _policiesContainer, fileName);
+        var versionedBlobClient = blobClient.WithVersion(versionId);
 
-        // Search for blobs matching the tag expression
-        await foreach (var blobItem in containerClient.FindBlobsByTagsAsync(tagExpression))
+        if (!await versionedBlobClient.ExistsAsync())
         {
-            if (blobItem.BlobName.Equals(fileName, StringComparison.OrdinalIgnoreCase))
-            {
-                // Create a BlobClient for the found blob
-                var blobClient = containerClient.GetBlobClient(blobItem.BlobName);
-
-                // Check if the blob exists
-                if (!await blobClient.ExistsAsync())
-                {
-                    _logger.LogError($"Blob does not exist: {fileName} version: {version} container: {_policiesContainer}");
-                    throw new FileNotFoundException($"Blob does not exist: {fileName} version: {version} container: {_policiesContainer}");
-                }
-
-                // Build the SAS URI
-                var sasBuilder = BuildSasUri(fileName, _policiesContainer);
-                _logger.LogInformation($"Generating SAS URI for {fileName} in {_policiesContainer}");
-                var sasUri = blobClient.GenerateSasUri(sasBuilder);
-
-                return sasUri?.ToString() ?? throw new InvalidOperationException("Failed to generate SAS URI");
-            }
+            _logger.LogError($"Blob does not exist: {fileName} container: {_policiesContainer} versionId: {versionId}");
+            throw new FileNotFoundException($"Blob does not exist: {fileName} container: {_policiesContainer} versionId: {versionId}");
         }
 
-        // If no matching blob is found
-        _logger.LogError($"Blob with name '{fileName}' and version '{version}' not found in container '{_policiesContainer}'.");
-        throw new FileNotFoundException($"Blob with name '{fileName}' and version '{version}' not found in container '{_policiesContainer}'.");
+        var sasBuilder = BuildSasUri(fileName, _policiesContainer);
+
+        _logger.LogInformation($"Generating SAS URI for {fileName} container: {_policiesContainer} versionId: {versionId}");
+
+        var sasUri = versionedBlobClient.GenerateSasUri(sasBuilder);
+
+        return sasUri?.ToString() ?? throw new InvalidOperationException("Failed to generate SAS URI");
+    }
+
+    public async Task<Dictionary<string, List<PolicesWithVersionsResponse>>> GetPoliciesWithVersionsAsync()
+    {
+        var containerClient = new BlobContainerClient(_storageConnectionString, _policiesContainer);
+
+        var policiesWithVersions = new Dictionary<string, List<PolicesWithVersionsResponse>>();
+
+        await foreach (BlobItem blobItem in containerClient.GetBlobsAsync(BlobTraits.None, BlobStates.Version))
+        {
+            var versionInfo = new PolicesWithVersionsResponse
+            {
+                VersionId = blobItem.VersionId,
+                IsLatestVersion = blobItem.IsLatestVersion,
+                LastModified = blobItem.Properties.LastModified
+            };
+
+            if (!policiesWithVersions.TryGetValue(blobItem.Name, out var versions))
+            {
+                versions = new List<PolicesWithVersionsResponse>();
+                policiesWithVersions[blobItem.Name] = versions;
+            }
+
+            versions.Add(versionInfo);
+        }
+
+        return policiesWithVersions;
     }
 
     private static BlobSasBuilder BuildSasUri(string fileName, string container)

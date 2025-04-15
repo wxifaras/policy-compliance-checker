@@ -16,13 +16,16 @@ public class PolicyCheckerController : ControllerBase
 {
     private readonly ILogger<PolicyCheckerController> _logger;
     private readonly QueueClient _queueClient;
+    private readonly IAzureStorageService _azureStorageService;
 
     public PolicyCheckerController(
         ILogger<PolicyCheckerController> logger,
-        IOptions<AzureStorageOptions> storageOptions)
+        IOptions<AzureStorageOptions> storageOptions,
+        IAzureStorageService azureStorageService)
     {
         _logger = logger;
         _queueClient = new QueueClient(storageOptions.Value.StorageConnectionString, storageOptions.Value.QueueName);
+        _azureStorageService = azureStorageService;
     }
 
     [MapToApiVersion("1.0")]
@@ -42,7 +45,26 @@ public class PolicyCheckerController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking policy.");
+            _logger.LogError(ex, "Error in EnqueuePolicyCheckAsync.");
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    [MapToApiVersion("1.0")]
+    [HttpGet("get-policies")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetPoliciesAsync()
+    {
+        try
+        {
+            var policies = await _azureStorageService.GetPoliciesWithVersionsAsync();
+            return Ok(policies);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetPoliciesAsync.");
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }

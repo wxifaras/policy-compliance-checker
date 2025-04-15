@@ -8,8 +8,5 @@ public record PolicyAdminRequest
     public IFormFile Policy { get; set; }
 
     [Required]
-    public string PolicyVersion { get; set; }
-
-    [Required]
     public string UserId { get; set; }
 }

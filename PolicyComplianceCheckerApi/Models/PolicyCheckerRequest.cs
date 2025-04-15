@@ -14,5 +14,5 @@ public record PolicyCheckerRequest
     public string PolicyFileName { get; set; }
 
     [Required]
-    public string PolicyVersion { get; set; }
+    public string VersionId { get; set; }
 }
