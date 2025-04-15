@@ -12,12 +12,16 @@ public class AdminController : ControllerBase
 {
     private readonly ILogger<AdminController> _logger;
     private readonly IAzureStorageService _azureStorageService;
+    private readonly IAzureCosmosDBService _cosmosDBService;
 
-    public AdminController(ILogger<AdminController> logger,
-        IAzureStorageService azureStorageService)
+    public AdminController(
+        ILogger<AdminController> logger,
+        IAzureStorageService azureStorageService,
+        IAzureCosmosDBService cosmosDBService)
     {
         _logger = logger;
         _azureStorageService = azureStorageService;
+        _cosmosDBService = cosmosDBService;
     }
 
     [MapToApiVersion("1.0")]
@@ -29,8 +33,19 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var version = await _azureStorageService.UploadPolicyAsync(request.Policy.OpenReadStream(), request.Policy.FileName);
-            return Ok(version);
+            var versionId = await _azureStorageService.UploadPolicyAsync(request.Policy.OpenReadStream(), request.Policy.FileName);
+
+            var policyLog = new PolicyLog
+            {
+                DocumentType = DocumentType.Policy.ToString(),
+                UserId = request.UserId,
+                VersionId = versionId,
+                PolicyFile = request.Policy.FileName
+            };
+
+            await _cosmosDBService.AddPolicyComplianceLogAsync(policyLog);
+
+            return Ok(versionId);
         }
         catch (Exception ex)
         {

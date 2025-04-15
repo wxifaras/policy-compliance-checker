@@ -1,9 +1,9 @@
 ﻿using Azure;
 using Azure.AI.DocumentIntelligence;
+using concierge_agent_api.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.ML.Tokenizers;
 using PolicyComplianceCheckerApi.Models;
-using System;
 using System.Text;
 
 namespace PolicyComplianceCheckerApi.Services;
@@ -15,14 +15,16 @@ public class PolicyCheckerService : IPolicyCheckerService
     private readonly IAzureStorageService _azureStorageService;
     private readonly TiktokenTokenizer _tokenizer;
     private readonly DocumentIntelligenceClient _documentIntelligenceClient;
+    private readonly IAzureCosmosDBService _cosmosDBService;
 
-    private const int MAX_TOKENS = 50000;
+    private const int MAX_TOKENS = 128000; // set for gpt-4o, update as model changes
 
     public PolicyCheckerService(
         ILogger<PolicyCheckerService> logger,
         IAzureOpenAIService azureOpenAIService,
         IAzureStorageService azureStorageService,
-        IOptions<AzureDocIntelOptions> docIntelOptions)
+        IOptions<AzureDocIntelOptions> docIntelOptions,
+        IAzureCosmosDBService cosmosDBService)
     {
         _logger = logger;
         _azureOpenAIService = azureOpenAIService;
@@ -31,8 +33,9 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         _documentIntelligenceClient = new DocumentIntelligenceClient(
             new Uri(docIntelOptions.Value.Endpoint),
-            new AzureKeyCredential(docIntelOptions.Value.ApiKey)
-        );
+            new AzureKeyCredential(docIntelOptions.Value.ApiKey));
+
+        _cosmosDBService = cosmosDBService;
     }
 
     /// <summary>
@@ -41,8 +44,9 @@ public class PolicyCheckerService : IPolicyCheckerService
     /// <param name="engagementLetter">Engagement Letter</param>
     /// <param name="policyFileName">Policy File</param>
     /// <param name="versionId">VersionId of the blob</param>
+    /// <param name="userId">UserId of the user</param>
     /// <returns>SAS Uri of Policy Violations Markdown Report</returns>
-    public async Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId)
+    public async Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId, string userId)
     {
         var engagementSasUri = await _azureStorageService.GetEngagementSasUriAsync(engagementLetter);
 
