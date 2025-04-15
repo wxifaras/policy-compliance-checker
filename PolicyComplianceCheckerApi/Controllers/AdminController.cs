@@ -73,5 +73,24 @@ public class AdminController : ControllerBase
         }
     }
 
+    [MapToApiVersion("1.0")]
+    [HttpGet("engagement-logs")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetEngagementLogs([FromQuery] string? userId = null)
+    {
+        try
+        {
+            var logs = await _cosmosDBService.GetEngagementLogs("Engagement", userId);
+            return Ok(logs);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving EngagementLog logs.");
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+    }
+
 
 }

@@ -12,15 +12,18 @@ public class PolicyCheckerQueueService : BackgroundService
     private readonly ILogger<PolicyCheckerQueueService> _logger;
     private readonly QueueClient _queueClient;
     private readonly IPolicyCheckerService _policyCheckerService;
+    private readonly IAzureCosmosDBService _cosmosDBService;
 
     public PolicyCheckerQueueService(
         ILogger<PolicyCheckerQueueService> logger,
         IOptions<AzureStorageOptions> storageOptions,
-        IPolicyCheckerService policyCheckerService)
+        IPolicyCheckerService policyCheckerService,
+         IAzureCosmosDBService cosmosDBService)
     {
         _logger = logger;
         _queueClient = new QueueClient(storageOptions.Value.StorageConnectionString, storageOptions.Value.QueueName);
         _policyCheckerService = policyCheckerService;
+        _cosmosDBService = cosmosDBService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -47,6 +50,7 @@ public class PolicyCheckerQueueService : BackgroundService
                             policyRequest.UserId
                         );
 
+                    
                     // TODO: violationsSas to SignalR hub
 
                     // Delete the message after processing

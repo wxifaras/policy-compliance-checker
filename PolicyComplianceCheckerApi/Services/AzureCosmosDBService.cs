@@ -44,6 +44,20 @@ public class AzureCosmosDBService : IAzureCosmosDBService
         return response.Resource;
     }
 
+    public async Task<EngagementLog> AddEngagementLogAsync(EngagementLog log)
+    {
+        _logger.LogInformation($"Adding engagement log for user {log.UserId} and Engagement letter {log.EngagementLetter}");
+
+        ItemResponse<EngagementLog> response = await _logContainer.CreateItemAsync(
+            item: log,
+            partitionKey: new PartitionKeyBuilder()
+                .Add(log.DocumentType)
+                .Add(log.UserId)
+                .Build());
+
+        return response.Resource;
+    }
+
     public async Task<List<PolicyLog>> GetPolicyComplianceLogs(string documentType, string? userId = null)
     {
         var queryable = _logContainer.GetItemLinqQueryable<PolicyLog>(allowSynchronousQueryExecution: false)
@@ -64,6 +78,28 @@ public class AzureCosmosDBService : IAzureCosmosDBService
         }
 
         return policyComplianceLogs;
+    }
+
+    public async Task<List<EngagementLog>> GetEngagementLogs(string documentType, string? userId = null)
+    {
+        var queryable = _logContainer.GetItemLinqQueryable<EngagementLog>(allowSynchronousQueryExecution: false)
+            .Where(p => p.DocumentType == documentType);
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            queryable = queryable.Where(p => p.UserId == userId);
+        }
+
+        var query = queryable.ToFeedIterator();
+        var engagementComplianceLogs = new List<EngagementLog>();
+
+        while (query.HasMoreResults)
+        {
+            var response = await query.ReadNextAsync();
+            engagementComplianceLogs.AddRange(response);
+        }
+
+        return engagementComplianceLogs;
     }
 
 }
