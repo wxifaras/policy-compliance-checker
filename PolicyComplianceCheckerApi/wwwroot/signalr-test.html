@@ -90,6 +90,7 @@
         function receivePolicyCheckerResult(result) {
             // Get the policy results div
             const policyResultsDiv = document.getElementById("policyResults");
+            const encodedUrl = encodeURI(result.violationsSasUri); // Use the correct property name 'violationsSasUri'
 
             // Create a formatted display for the policy result
             const resultHtml = `
@@ -100,7 +101,7 @@
                     <p><strong>Violations Found:</strong> <span style="color: ${result.violationsCount > 0 ? 'red' : 'green'}; font-weight: bold;">
                         ${result.violationsCount}
                     </span></p>
-                    <p><a href="${result.violationsSasUrl}" target="_blank" style="color: #007bff;">View Violations Report</a></p>
+                    <p><a href="${encodedUrl}" target="_blank" style="color: #007bff;">View Violations Report</a></p>
                 </div>
             `;
 
