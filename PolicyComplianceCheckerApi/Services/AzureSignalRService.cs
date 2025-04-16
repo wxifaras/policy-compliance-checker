@@ -1,22 +1,21 @@
-﻿namespace PolicyComplianceCheckerApi.Services
+﻿namespace PolicyComplianceCheckerApi.Services;
+
+using Microsoft.AspNetCore.SignalR;
+using PolicyComplianceCheckerApi.Hubs;
+using PolicyComplianceCheckerApi.Models;
+
+public class AzureSignalRService : IAzureSignalRService
 {
-    using Microsoft.AspNetCore.SignalR;
-    using Microsoft.Extensions.Options;
-    using PolicyComplianceCheckerApi.Hubs;
-    using PolicyComplianceCheckerApi.Models;
+    private readonly ILogger<IAzureSignalRService> _logger;
+    private readonly IHubContext<PolicyCheckerHub> _hubContext;
 
-    public class AzureSignalRService : IAzureSignalRService
+    public AzureSignalRService(
+        IHubContext<PolicyCheckerHub> hubContext,
+        ILogger<IAzureSignalRService> logger)
     {
-        private readonly ILogger<IAzureSignalRService> _logger;
-        private readonly IHubContext<PolicyCheckerHub> _hubContext;
-
-        public AzureSignalRService(
-            IHubContext<PolicyCheckerHub> hubContext,
-            ILogger<IAzureSignalRService> logger)
-        {
-            _logger = logger;
-            _hubContext = hubContext;            
-        }
+        _logger = logger;
+        _hubContext = hubContext;            
+    }
 
         public async Task SendPolicyResultAsync(string groupName, PolicyCheckerResult policyCheckerResult)
         {
@@ -25,8 +24,8 @@
                 // use this to send an update to a specific group
                 //await _hubContext.Clients.Group(groupName).SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
 
-                // use this to send an update to all clients
-                await _hubContext.Clients.All.SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
+                // send a broadcast to all clients
+                //await _hubContext.Clients.All.SendAsync("ReceiveBroadcast", policyCheckerResult);
             }
             catch (Exception ex)
             {

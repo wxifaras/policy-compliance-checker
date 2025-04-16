@@ -90,6 +90,7 @@
         function receivePolicyCheckerResult(result) {
             // Get the policy results div
             const policyResultsDiv = document.getElementById("policyResults");
+            const encodedUrl = encodeURI(result.violationsSasUri); // Use the correct property name 'violationsSasUri'
 
             // Encode the SAS URL properly
             const encodedUrl = encodeURI(result.violationsSasUri);

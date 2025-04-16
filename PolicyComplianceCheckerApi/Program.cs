@@ -107,8 +107,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-
-
 app.UseStaticFiles();
 
 // Configure the HTTP request pipeline.
