@@ -53,14 +53,13 @@ public class SignalRTestController : Controller
     }
 }
 
-    // Class for custom policy result requests
-    public class SendPolicyResultRequest
-    {
-        public string GroupName { get; set; }
-        public string ViolationsSasUri { get; set; }
-        public int? ViolationsCount { get; set; }
-        public string EngagementLetterName { get; set; }
-        public string PolicyFileName { get; set; }
-        public string PolicyVersion { get; set; }
-    }
+// Class for custom policy result requests
+public class SendPolicyResultRequest
+{
+    public string GroupName { get; set; }
+    public string ViolationsSasUri { get; set; }
+    public int? ViolationsCount { get; set; }
+    public string EngagementLetterName { get; set; }
+    public string PolicyFileName { get; set; }
+    public string PolicyVersion { get; set; }
 }

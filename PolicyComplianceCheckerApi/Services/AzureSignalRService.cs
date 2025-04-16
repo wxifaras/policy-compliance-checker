@@ -17,36 +17,35 @@ public class AzureSignalRService : IAzureSignalRService
         _hubContext = hubContext;            
     }
 
-        public async Task SendPolicyResultAsync(string groupName, PolicyCheckerResult policyCheckerResult)
+    public async Task SendPolicyResultAsync(string groupName, PolicyCheckerResult policyCheckerResult)
+    {
+        try
         {
-            try
-            {
-                // use this to send an update to a specific group
-                //await _hubContext.Clients.Group(groupName).SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
+            // use this to send an update to a specific group
+            //await _hubContext.Clients.Group(groupName).SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
 
-                // send a broadcast to all clients
-                await _hubContext.Clients.All.SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending SignalR update");
-            }
+            // send a broadcast to all clients
+            await _hubContext.Clients.All.SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
         }
-
-        public async Task SendProgressAsync(string requestId, int progress)
+        catch (Exception ex)
         {
-            try
-            {
-                // use this to send progress updates to a specific group
-                //await _hubContext.Clients.Group(requestId).SendAsync("ReceiveProgress", progress);
+            _logger.LogError(ex, "Error sending SignalR update");
+        }
+    }
 
-                // use this to send progress updates to all clients
-                await _hubContext.Clients.All.SendAsync("ReceiveProgress", progress);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending SignalR progress update");
-            }
+    public async Task SendProgressAsync(string requestId, int progress)
+    {
+        try
+        {
+            // use this to send progress updates to a specific group
+            //await _hubContext.Clients.Group(requestId).SendAsync("ReceiveProgress", progress);
+
+            // use this to send progress updates to all clients
+            await _hubContext.Clients.All.SendAsync("ReceiveProgress", progress);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending SignalR progress update");
         }
     }
 }
