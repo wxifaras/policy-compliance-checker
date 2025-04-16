@@ -121,7 +121,6 @@ public class PolicyCheckerService : IPolicyCheckerService
         {
             EngagementLetterName = engagementLetter,
             ViolationsSasUri = violationsSas,
-            ViolationsCount = allViolations.Length,
             PolicyFileName = policyFileName,
             PolicyVersion = versionId
         };
