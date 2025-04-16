@@ -58,7 +58,6 @@ public class PolicyCheckerQueueService : BackgroundService
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing message: {message}", message.MessageText);
-                    // Optionally, handle the message (e.g., move to a dead-letter queue)
                 }
             }
 
