@@ -18,16 +18,6 @@ public class PolicyCheckerHub : Hub
         await Groups.AddToGroupAsync(Context.ConnectionId, userId);
     }
 
-        // You can define methods that clients can call directly
-        /*public async Task BroadcastMessage(string name, string message)
-        {
-            // This sends a message to all connected clients on the "broadcastMessage" channel
-            await Clients.All.SendAsync("ReceiveBroadcast", message);
-
-            // Log the message
-            _logger.LogInformation($"Broadcast message from {name}: {message}");
-        }*/
-
     public override async Task OnConnectedAsync()
     {
         _logger.LogInformation("Client connected: {ConnectionId}", Context.ConnectionId);
