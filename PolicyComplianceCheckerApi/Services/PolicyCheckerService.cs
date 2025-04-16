@@ -117,13 +117,15 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         await _cosmosDBService.AddEngagementLogAsync(engagementLog);
 
-        return new PolicyCheckerResult
+        var policyCheckerResult = new PolicyCheckerResult
         {
             EngagementLetterName = engagementLetter,
             ViolationsSasUri = violationsSas,
             PolicyFileName = policyFileName,
             PolicyVersion = versionId
         };
+
+        return policyCheckerResult;
     }
 
     private async Task<string> ReadDocumentContentAsync(Uri documentUri)
