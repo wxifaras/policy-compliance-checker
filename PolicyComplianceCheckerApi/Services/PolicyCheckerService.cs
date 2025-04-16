@@ -1,6 +1,5 @@
 ﻿using Azure;
 using Azure.AI.DocumentIntelligence;
-using concierge_agent_api.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.ML.Tokenizers;
 using PolicyComplianceCheckerApi.Models;
@@ -62,6 +61,8 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         var policyChunks = ChunkDocument(policyFileContent, availableTokens);
 
+        var violationsFileName = string.Empty;
+
         var allViolations = new StringBuilder();
 
         foreach (var policyChunk in policyChunks)
@@ -83,7 +84,7 @@ public class PolicyCheckerService : IPolicyCheckerService
         else
         {
             // Upload violations markdown report and engagement letter to Azure Storage
-            var violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
+            violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
 
             var binaryData = BinaryData.FromString(allViolations.ToString());
 
@@ -93,6 +94,18 @@ public class PolicyCheckerService : IPolicyCheckerService
 
             violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
         }
+
+        var engagementLog = new EngagementLog
+        {
+            DocumentType = DocumentType.Engagement.ToString(),
+            UserId = userId,
+            EngagementLetter = engagementLetter,
+            PolicyFile = policyFileName,
+            PolicyFileVersionId = versionId,
+            PolicyViolationsFile = violationsFileName
+        };
+
+        await _cosmosDBService.AddEngagementLogAsync(engagementLog);
 
         return violationsSas;
     }

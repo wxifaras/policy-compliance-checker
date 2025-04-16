@@ -13,7 +13,7 @@ public class AzureCosmosDBService : IAzureCosmosDBService
     private readonly ILogger<AzureCosmosDBService> _logger;
 
     public AzureCosmosDBService(
-        IOptions<CosmosDbOptions> options, 
+        IOptions<CosmosDbOptions> options,
         ILogger<AzureCosmosDBService> logger)
     {
         CosmosClient cosmosClient = new(
@@ -44,21 +44,60 @@ public class AzureCosmosDBService : IAzureCosmosDBService
         return response.Resource;
     }
 
-    public async Task<List<PolicyLog>> GetPolicyComplianceLogs(string documentType, string userId)
+    public async Task<EngagementLog> AddEngagementLogAsync(EngagementLog log)
     {
-        var policyComplianceLogs = new List<PolicyLog>();
+        _logger.LogInformation($"Adding engagement log for user {log.UserId} and Engagement letter {log.EngagementLetter}");
 
-        var query = _logContainer.GetItemLinqQueryable<PolicyLog>()
-            .Where(p => p.UserId == userId && p.DocumentType == documentType).ToFeedIterator();
+        ItemResponse<EngagementLog> response = await _logContainer.CreateItemAsync(
+            item: log,
+            partitionKey: new PartitionKeyBuilder()
+                .Add(log.DocumentType)
+                .Add(log.UserId)
+                .Build());
+
+        return response.Resource;
+    }
+
+    public async Task<List<PolicyLog>> GetPolicyComplianceLogs(string documentType, string? userId = null)
+    {
+        var queryable = _logContainer.GetItemLinqQueryable<PolicyLog>(allowSynchronousQueryExecution: false)
+            .Where(p => p.DocumentType == documentType);
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            queryable = queryable.Where(p => p.UserId == userId);
+        }
+
+        var query = queryable.ToFeedIterator();
+        var policyComplianceLogs = new List<PolicyLog>();
 
         while (query.HasMoreResults)
         {
-            foreach (var item in await query.ReadNextAsync())
-            {
-                // Process each item
-            }
+            var response = await query.ReadNextAsync();
+            policyComplianceLogs.AddRange(response);
+        }
+        
+        return policyComplianceLogs;
+    }
+
+    public async Task<List<EngagementLog>> GetEngagementLogs(string documentType, string? userId = null)
+    {
+        var queryable = _logContainer.GetItemLinqQueryable<EngagementLog>(allowSynchronousQueryExecution: false)
+            .Where(p => p.DocumentType == documentType);
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            queryable = queryable.Where(p => p.UserId == userId);
         }
 
-        return policyComplianceLogs;
+        var query = queryable.ToFeedIterator();
+        var engagementComplianceLogs = new List<EngagementLog>();
+
+        while (query.HasMoreResults)
+        {
+            var response = await query.ReadNextAsync();
+            engagementComplianceLogs.AddRange(response);
+        }
+        return engagementComplianceLogs;
     }
 }

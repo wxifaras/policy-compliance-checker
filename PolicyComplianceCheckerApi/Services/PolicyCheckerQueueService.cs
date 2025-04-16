@@ -12,7 +12,7 @@ public class PolicyCheckerQueueService : BackgroundService
     private readonly ILogger<PolicyCheckerQueueService> _logger;
     private readonly QueueClient _queueClient;
     private readonly IPolicyCheckerService _policyCheckerService;
-
+    
     public PolicyCheckerQueueService(
         ILogger<PolicyCheckerQueueService> logger,
         IOptions<AzureStorageOptions> storageOptions,
@@ -46,7 +46,7 @@ public class PolicyCheckerQueueService : BackgroundService
                             policyRequest.VersionId,
                             policyRequest.UserId
                         );
-
+                    
                     // TODO: violationsSas to SignalR hub
 
                     // Delete the message after processing
