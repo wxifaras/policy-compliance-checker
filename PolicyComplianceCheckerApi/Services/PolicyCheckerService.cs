@@ -3,7 +3,6 @@ using Azure.AI.DocumentIntelligence;
 using Microsoft.Extensions.Options;
 using Microsoft.ML.Tokenizers;
 using PolicyComplianceCheckerApi.Models;
-using System;
 using System.Text;
 
 namespace PolicyComplianceCheckerApi.Services;
@@ -16,8 +15,9 @@ public class PolicyCheckerService : IPolicyCheckerService
     private readonly TiktokenTokenizer _tokenizer;
     private readonly DocumentIntelligenceClient _documentIntelligenceClient;
     private readonly IAzureSignalRService _azureSignalRService;
+    private readonly IAzureCosmosDBService _cosmosDBService;
 
-    private const int MAX_TOKENS = 50000;
+    private const int MAX_TOKENS = 128000; // set for gpt-4o, update as model changes
 
     public PolicyCheckerService(
         ILogger<PolicyCheckerService> logger,
@@ -25,6 +25,7 @@ public class PolicyCheckerService : IPolicyCheckerService
         IAzureStorageService azureStorageService,
         IOptions<AzureDocIntelOptions> docIntelOptions,
         IAzureSignalRService azureSignalRService)
+        IAzureCosmosDBService cosmosDBService)
     {
         _logger = logger;
         _azureOpenAIService = azureOpenAIService;
@@ -34,8 +35,9 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         _documentIntelligenceClient = new DocumentIntelligenceClient(
             new Uri(docIntelOptions.Value.Endpoint),
-            new AzureKeyCredential(docIntelOptions.Value.ApiKey)
-        );
+            new AzureKeyCredential(docIntelOptions.Value.ApiKey));
+
+        _cosmosDBService = cosmosDBService;
     }
 
     /// <summary>
@@ -44,8 +46,9 @@ public class PolicyCheckerService : IPolicyCheckerService
     /// <param name="engagementLetter">Engagement Letter</param>
     /// <param name="policyFileName">Policy File</param>
     /// <param name="versionId">VersionId of the blob</param>
+    /// <param name="userId">UserId of the user</param>
     /// <returns>SAS Uri of Policy Violations Markdown Report</returns>
-    public async Task<PolicyCheckerResult> CheckPolicyAsync(string userId, string engagementLetter, string policyFileName, string versionId)
+    public async Task<PolicyCheckerResult> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId, string userId)
     {
         var engagementSasUri = await _azureStorageService.GetEngagementSasUriAsync(engagementLetter);
 
@@ -60,6 +63,8 @@ public class PolicyCheckerService : IPolicyCheckerService
         var availableTokens = MAX_TOKENS - engagementLetterTokens - 1000; // Reserve 1000 tokens for prompts
 
         var policyChunks = ChunkDocument(policyFileContent, availableTokens);
+
+        var violationsFileName = string.Empty;
 
         var allViolations = new StringBuilder();
 
@@ -89,7 +94,7 @@ public class PolicyCheckerService : IPolicyCheckerService
         else
         {
             // Upload violations markdown report and engagement letter to Azure Storage
-            var violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
+            violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
 
             var binaryData = BinaryData.FromString(allViolations.ToString());
 
@@ -99,6 +104,18 @@ public class PolicyCheckerService : IPolicyCheckerService
 
             violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
         }
+
+        var engagementLog = new EngagementLog
+        {
+            DocumentType = DocumentType.Engagement.ToString(),
+            UserId = userId,
+            EngagementLetter = engagementLetter,
+            PolicyFile = policyFileName,
+            PolicyFileVersionId = versionId,
+            PolicyViolationsFile = violationsFileName
+        };
+
+        await _cosmosDBService.AddEngagementLogAsync(engagementLog);
 
         return new PolicyCheckerResult
         {

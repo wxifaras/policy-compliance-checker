@@ -13,7 +13,7 @@ public class PolicyCheckerQueueService : BackgroundService
     private readonly QueueClient _queueClient;
     private readonly IPolicyCheckerService _policyCheckerService;
     private readonly IAzureSignalRService _azureSignalRService;
-
+    
     public PolicyCheckerQueueService(
         ILogger<PolicyCheckerQueueService> logger,
         IOptions<AzureStorageOptions> storageOptions,
@@ -47,12 +47,12 @@ public class PolicyCheckerQueueService : BackgroundService
                             policyRequest.UserId,
                             policyRequest.EngagementLetter,
                             policyRequest.PolicyFileName,
-                            policyRequest.VersionId
+                            policyRequest.VersionId,
+                            policyRequest.UserId
                         );
 
                     // Send the violationsSas to SignalR hub
                     await _azureSignalRService.SendPolicyResultAsync(policyRequest.UserId, policyCheckerResult);
-
                     // Delete the message after processing
                     await _queueClient.DeleteMessageAsync(message.MessageId, message.PopReceipt, stoppingToken);
                 }
