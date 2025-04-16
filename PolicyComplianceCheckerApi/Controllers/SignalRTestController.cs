@@ -30,7 +30,7 @@
             // Create PolicyCheckerResult from the request
             var result = new PolicyCheckerResult
             {
-                ViolationsSasUri = request.ViolationsSasUri ?? "https://sapolicydocstorage.blob.core.windows.net/reports/custom-report.md",
+                ViolationsSasUri = request.ViolationsSasUri ?? "https://placeholder.blob.core.windows.net/reports/custom-report.md",
                 ViolationsCount = request.ViolationsCount ?? 0,
                 EngagementLetterName = request.EngagementLetterName ?? "Custom Engagement Letter",
                 PolicyFileName = request.PolicyFileName ?? "Custom Policy Document.pdf",

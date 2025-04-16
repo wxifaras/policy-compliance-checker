@@ -22,11 +22,11 @@
         {
             try
             {
-                // send an update to all clients which have joined a specific group
-                await _hubContext.Clients.Group(groupName).SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
+                // use this to send an update to a specific group
+                //await _hubContext.Clients.Group(groupName).SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
 
-                // send a broadcast to all clients
-                //await _hubContext.Clients.All.SendAsync("ReceiveBroadcast", policyCheckerResult);
+                // use this to send an update to all clients
+                await _hubContext.Clients.All.SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
             }
             catch (Exception ex)
             {
@@ -38,7 +38,11 @@
         {
             try
             {
-                await _hubContext.Clients.Group(requestId).SendAsync("ReceiveProgress", progress);
+                // use this to send progress updates to a specific group
+                //await _hubContext.Clients.Group(requestId).SendAsync("ReceiveProgress", progress);
+
+                // use this to send progress updates to all clients
+                await _hubContext.Clients.All.SendAsync("ReceiveProgress", progress);
             }
             catch (Exception ex)
             {
