@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 public class PolicyCheckerHub : Hub
 {
     private readonly ILogger<PolicyCheckerHub> _logger;
+
     public PolicyCheckerHub(ILogger<PolicyCheckerHub> logger)
     {
         _logger = logger;
