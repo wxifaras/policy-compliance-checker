@@ -16,8 +16,7 @@ public class PolicyCheckerQueueService : BackgroundService
     public PolicyCheckerQueueService(
         ILogger<PolicyCheckerQueueService> logger,
         IOptions<AzureStorageOptions> storageOptions,
-        IPolicyCheckerService policyCheckerService
-        )
+        IPolicyCheckerService policyCheckerService)
     {
         _logger = logger;
         _queueClient = new QueueClient(storageOptions.Value.StorageConnectionString, storageOptions.Value.QueueName);
