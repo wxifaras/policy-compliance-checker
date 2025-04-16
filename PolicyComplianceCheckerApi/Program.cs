@@ -1,6 +1,9 @@
 using Asp.Versioning;
 using concierge_agent_api.Models;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Azure.SignalR.Common;
 using Microsoft.Extensions.Options;
+using PolicyComplianceCheckerApi.Hubs;
 using PolicyComplianceCheckerApi.Models;
 using PolicyComplianceCheckerApi.Services;
 
@@ -64,14 +67,27 @@ builder.Services.AddSingleton<IAzureOpenAIService>(sp =>
     return new AzureOpenAIService(azureOpenAIOptions, logger);
 });
 
+builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration.GetConnectionString("AzureSignalR"));
+
+// Register business-specific abstraction over SignalR
+builder.Services.AddSingleton<IAzureSignalRService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<AzureSignalRService>>();
+
+    var hubContext = sp.GetRequiredService<IHubContext<PolicyCheckerHub>>();
+
+    return new AzureSignalRService(hubContext, logger);
+});
+
 builder.Services.AddSingleton<IPolicyCheckerService>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<PolicyCheckerService>>();
     var azureOpenAIService = sp.GetRequiredService<IAzureOpenAIService>();
     var azureStorageService = sp.GetRequiredService<IAzureStorageService>();
     var azureDocIntelOptions = sp.GetRequiredService<IOptions<AzureDocIntelOptions>>();
+    var azureSignalRService = sp.GetRequiredService<IAzureSignalRService>();
 
-    return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions);
+    return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions, azureSignalRService);
 });
 
 builder.Services.AddHostedService<PolicyCheckerQueueService>();
@@ -91,12 +107,18 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Configure the HTTP request pipeline.
 
+
+app.UseStaticFiles();
+
+// Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map the SignalR hub
+app.MapHub<PolicyCheckerHub>("/policycheckerhub");
 
 app.Run();

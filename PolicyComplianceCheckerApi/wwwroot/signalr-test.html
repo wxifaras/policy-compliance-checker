@@ -1,0 +1,157 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>SignalR Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #messages {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #f0f0f0;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        input, button {
+            padding: 5px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>SignalR Test Client</h1>
+
+    <div class="form-group">
+        <label for="userId">User ID:</label>
+        <input type="text" id="userId" value="1" />
+        <button id="registerBtn">Register</button>
+    </div>
+
+    <h3>Progress:</h3>
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div id="progressText">0%</div>
+
+    <h3>Policy Check Results:</h3>
+    <div id="policyResults" style="border: 1px solid #007bff; padding: 10px; min-height: 100px; margin-bottom: 20px;"></div>
+
+    <h3>Messages:</h3>
+    <div id="messages"></div>
+
+
+    <h3>Messages:</h3>
+    <div id="messages"></div>
+
+    <!-- Include SignalR client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+
+    <script>
+        // Create connection
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/policycheckerhub")
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        // DOM elements
+        const messagesDiv = document.getElementById("messages");
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+        const userIdText = document.getElementById("userId");
+        const registerBtn = document.getElementById("registerBtn");
+        const messageInput = document.getElementById("messageInput");
+        //const sendBtn = document.getElementById("sendBtn");
+
+        // Add message to the log
+        function addMessage(message) {
+            const messageElement = document.createElement("div");
+            messageElement.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function receivePolicyCheckerResult(result) {
+            // Get the policy results div
+            const policyResultsDiv = document.getElementById("policyResults");
+
+            // Create a formatted display for the policy result
+            const resultHtml = `
+                <div style="margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-left: 4px solid #007bff;">
+                    <h4 style="margin-top: 0;">Policy Check Results</h4>
+                    <p><strong>Engagement Letter:</strong> ${result.engagementLetterName}</p>
+                    <p><strong>Policy Document:</strong> ${result.policyFileName} (Version: ${result.policyVersion})</p>
+                    <p><strong>Violations Found:</strong> <span style="color: ${result.violationsCount > 0 ? 'red' : 'green'}; font-weight: bold;">
+                        ${result.violationsCount}
+                    </span></p>
+                    <p><a href="${result.violationsSasUrl}" target="_blank" style="color: #007bff;">View Violations Report</a></p>
+                </div>
+            `;
+
+            // Add the formatted result to the policy results div
+            policyResultsDiv.innerHTML = resultHtml;
+
+            // Also add a notification in the messages section
+            addMessage(`<span style="color: purple;">Received policy check result with ${result.violationsCount} violations</span>`);
+        }
+
+        function receiveProgress(progress) {
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `${progress}%`;
+            addMessage(`Progress updated to ${progress}%`);
+        }
+
+        // Handle receiving a PolicyCheckerResult
+        connection.on("ReceivePolicyCheckerResult", receivePolicyCheckerResult);
+
+        // Handle receiving progress updates
+        connection.on("ReceiveProgress", receiveProgress);
+
+        // Start the connection
+        connection.start()
+            .then(function () {
+                addMessage("Connected to SignalR hub!");
+            })
+            .catch(function (err) {
+                addMessage(`Connection error: ${err.toString()}`);
+                console.error(err);
+            });
+
+        // Register user button click handler
+        registerBtn.addEventListener("click", function () {
+            const userId = userIdText.value;
+            if (userId) {
+                connection.invoke("RegisterUser", userId)
+                    .then(function () {
+                        addMessage(`Registered User ID: ${userId}`);
+                    })
+                    .catch(function (err) {
+                        addMessage(`Error register user: ${err.toString()}`);
+                        console.error(err);
+                    });
+            }
+        });
+
+    </script>
+</body>
+</html>

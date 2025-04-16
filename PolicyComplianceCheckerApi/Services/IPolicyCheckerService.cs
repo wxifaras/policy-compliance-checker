@@ -1,6 +1,8 @@
 ﻿namespace PolicyComplianceCheckerApi.Services;
 
+using PolicyComplianceCheckerApi.Models;
+
 public interface IPolicyCheckerService
 {
-    Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId);
+    Task<PolicyCheckerResult> CheckPolicyAsync(string userId, string engagementLetter, string policyFileName, string versionId);
 }
