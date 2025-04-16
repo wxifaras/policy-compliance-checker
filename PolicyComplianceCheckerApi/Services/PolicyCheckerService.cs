@@ -1,7 +1,5 @@
 ﻿using Azure;
 using Azure.AI.DocumentIntelligence;
-using Azure.Core;
-using concierge_agent_api.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.ML.Tokenizers;
 using PolicyComplianceCheckerApi.Models;

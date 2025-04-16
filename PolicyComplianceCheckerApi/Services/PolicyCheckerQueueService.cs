@@ -13,7 +13,6 @@ public class PolicyCheckerQueueService : BackgroundService
     private readonly QueueClient _queueClient;
     private readonly IPolicyCheckerService _policyCheckerService;
     
-
     public PolicyCheckerQueueService(
         ILogger<PolicyCheckerQueueService> logger,
         IOptions<AzureStorageOptions> storageOptions,
@@ -23,7 +22,6 @@ public class PolicyCheckerQueueService : BackgroundService
         _logger = logger;
         _queueClient = new QueueClient(storageOptions.Value.StorageConnectionString, storageOptions.Value.QueueName);
         _policyCheckerService = policyCheckerService;
-        
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

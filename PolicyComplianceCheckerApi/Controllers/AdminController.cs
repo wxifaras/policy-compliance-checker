@@ -91,6 +91,4 @@ public class AdminController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
-
-
 }
