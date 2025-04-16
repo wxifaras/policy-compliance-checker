@@ -25,7 +25,7 @@ public class AzureSignalRService : IAzureSignalRService
                 //await _hubContext.Clients.Group(groupName).SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
 
                 // send a broadcast to all clients
-                //await _hubContext.Clients.All.SendAsync("ReceiveBroadcast", policyCheckerResult);
+                await _hubContext.Clients.All.SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
             }
             catch (Exception ex)
             {
