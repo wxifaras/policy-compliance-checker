@@ -33,7 +33,7 @@ public class PolicyCheckerController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> EnqueuePolicyCheckAsync([FromForm] PolicyCheckerRequest request)
+    public async Task<IActionResult> EnqueuePolicyCheckAsync([FromBody] PolicyCheckerRequest request)
     {
         try
         {
