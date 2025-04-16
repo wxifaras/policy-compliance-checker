@@ -12,15 +12,18 @@ public class PolicyCheckerQueueService : BackgroundService
     private readonly ILogger<PolicyCheckerQueueService> _logger;
     private readonly QueueClient _queueClient;
     private readonly IPolicyCheckerService _policyCheckerService;
+    private readonly IAzureSignalRService _azureSignalRService;
     
     public PolicyCheckerQueueService(
         ILogger<PolicyCheckerQueueService> logger,
         IOptions<AzureStorageOptions> storageOptions,
-        IPolicyCheckerService policyCheckerService)
+        IPolicyCheckerService policyCheckerService,
+        IAzureSignalRService azureSignalRService)
     {
         _logger = logger;
         _queueClient = new QueueClient(storageOptions.Value.StorageConnectionString, storageOptions.Value.QueueName);
         _policyCheckerService = policyCheckerService;
+        _azureSignalRService = azureSignalRService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -40,15 +43,16 @@ public class PolicyCheckerQueueService : BackgroundService
 
                     var policyRequest = JsonSerializer.Deserialize<PolicyCheckerRequest>(message.MessageText);
 
-                    var violationsSas = await _policyCheckerService.CheckPolicyAsync(
+                    var policyCheckerResult = await _policyCheckerService.CheckPolicyAsync(
+                            policyRequest.UserId,
                             policyRequest.EngagementLetter,
                             policyRequest.PolicyFileName,
                             policyRequest.VersionId,
                             policyRequest.UserId
                         );
-                    
-                    // TODO: violationsSas to SignalR hub
 
+                    // Send the violationsSas to SignalR hub
+                    await _azureSignalRService.SendPolicyResultAsync(policyRequest.UserId, policyCheckerResult);
                     // Delete the message after processing
                     await _queueClient.DeleteMessageAsync(message.MessageId, message.PopReceipt, stoppingToken);
                 }

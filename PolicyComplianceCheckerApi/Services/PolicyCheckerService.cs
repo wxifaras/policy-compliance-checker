@@ -14,6 +14,7 @@ public class PolicyCheckerService : IPolicyCheckerService
     private readonly IAzureStorageService _azureStorageService;
     private readonly TiktokenTokenizer _tokenizer;
     private readonly DocumentIntelligenceClient _documentIntelligenceClient;
+    private readonly IAzureSignalRService _azureSignalRService;
     private readonly IAzureCosmosDBService _cosmosDBService;
 
     private const int MAX_TOKENS = 128000; // set for gpt-4o, update as model changes
@@ -23,12 +24,14 @@ public class PolicyCheckerService : IPolicyCheckerService
         IAzureOpenAIService azureOpenAIService,
         IAzureStorageService azureStorageService,
         IOptions<AzureDocIntelOptions> docIntelOptions,
+        IAzureSignalRService azureSignalRService)
         IAzureCosmosDBService cosmosDBService)
     {
         _logger = logger;
         _azureOpenAIService = azureOpenAIService;
         _azureStorageService = azureStorageService;
         _tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
+        _azureSignalRService = azureSignalRService;
 
         _documentIntelligenceClient = new DocumentIntelligenceClient(
             new Uri(docIntelOptions.Value.Endpoint),
@@ -45,7 +48,7 @@ public class PolicyCheckerService : IPolicyCheckerService
     /// <param name="versionId">VersionId of the blob</param>
     /// <param name="userId">UserId of the user</param>
     /// <returns>SAS Uri of Policy Violations Markdown Report</returns>
-    public async Task<string> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId, string userId)
+    public async Task<PolicyCheckerResult> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId, string userId)
     {
         var engagementSasUri = await _azureStorageService.GetEngagementSasUriAsync(engagementLetter);
 
@@ -65,6 +68,8 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         var allViolations = new StringBuilder();
 
+        int policyChunkNumber = 1;
+
         foreach (var policyChunk in policyChunks)
         {
             _logger.LogInformation($"Analyzing policy chunk of size {policyChunk.Length} tokens.");
@@ -74,6 +79,11 @@ public class PolicyCheckerService : IPolicyCheckerService
             {
                 allViolations.AppendLine(violation);
             }
+
+            // update progress
+            await _azureSignalRService.SendProgressAsync(userId, (int)((float) policyChunkNumber / policyChunks.Count * 100));
+
+            policyChunkNumber++;
         }
 
         var violationsSas = string.Empty;
@@ -107,7 +117,14 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         await _cosmosDBService.AddEngagementLogAsync(engagementLog);
 
-        return violationsSas;
+        return new PolicyCheckerResult
+        {
+            EngagementLetterName = engagementLetter,
+            ViolationsSasUri = violationsSas,
+            ViolationsCount = allViolations.Length,
+            PolicyFileName = policyFileName,
+            PolicyVersion = versionId
+        };
     }
 
     private async Task<string> ReadDocumentContentAsync(Uri documentUri)
