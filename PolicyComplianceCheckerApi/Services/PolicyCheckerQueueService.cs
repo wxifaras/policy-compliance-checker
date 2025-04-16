@@ -43,8 +43,7 @@ public class PolicyCheckerQueueService : BackgroundService
 
                     var policyRequest = JsonSerializer.Deserialize<PolicyCheckerRequest>(message.MessageText);
 
-                    var policyCheckerResult = await _policyCheckerService.CheckPolicyAsync(
-                            policyRequest.UserId,
+                    var policyCheckerResult = await _policyCheckerService.CheckPolicyAsync(                           
                             policyRequest.EngagementLetter,
                             policyRequest.PolicyFileName,
                             policyRequest.VersionId,

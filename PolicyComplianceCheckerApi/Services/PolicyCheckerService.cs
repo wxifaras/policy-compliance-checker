@@ -24,7 +24,7 @@ public class PolicyCheckerService : IPolicyCheckerService
         IAzureOpenAIService azureOpenAIService,
         IAzureStorageService azureStorageService,
         IOptions<AzureDocIntelOptions> docIntelOptions,
-        IAzureSignalRService azureSignalRService)
+        IAzureSignalRService azureSignalRService,
         IAzureCosmosDBService cosmosDBService)
     {
         _logger = logger;

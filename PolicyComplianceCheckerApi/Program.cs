@@ -95,7 +95,7 @@ builder.Services.AddSingleton<IPolicyCheckerService>(sp =>
     var azureSignalRService = sp.GetRequiredService<IAzureSignalRService>();
     var cosmosDbService = sp.GetRequiredService<IAzureCosmosDBService>();
 
-    return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions, cosmosDbService, azureSignalRService);
+    return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions, azureSignalRService, cosmosDbService);
 });
 
 builder.Services.AddHostedService<PolicyCheckerQueueService>();
