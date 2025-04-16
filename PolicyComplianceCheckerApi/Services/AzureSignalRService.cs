@@ -1,49 +1,47 @@
-﻿namespace PolicyComplianceCheckerApi.Services
+﻿namespace PolicyComplianceCheckerApi.Services;
+
+using Microsoft.AspNetCore.SignalR;
+using PolicyComplianceCheckerApi.Hubs;
+using PolicyComplianceCheckerApi.Models;
+
+public class AzureSignalRService : IAzureSignalRService
 {
-    using Microsoft.AspNetCore.SignalR;
-    using Microsoft.Extensions.Options;
-    using PolicyComplianceCheckerApi.Hubs;
-    using PolicyComplianceCheckerApi.Models;
+    private readonly ILogger<IAzureSignalRService> _logger;
+    private readonly IHubContext<PolicyCheckerHub> _hubContext;
 
-    public class AzureSignalRService : IAzureSignalRService
+    public AzureSignalRService(
+        IHubContext<PolicyCheckerHub> hubContext,
+        ILogger<IAzureSignalRService> logger)
     {
-        private readonly ILogger<IAzureSignalRService> _logger;
-        private readonly IHubContext<PolicyCheckerHub> _hubContext;
+        _logger = logger;
+        _hubContext = hubContext;            
+    }
 
-        public AzureSignalRService(
-            IHubContext<PolicyCheckerHub> hubContext,
-            ILogger<IAzureSignalRService> logger)
+    public async Task SendPolicyResultAsync(string groupName, PolicyCheckerResult policyCheckerResult)
+    {
+        try
         {
-            _logger = logger;
-            _hubContext = hubContext;            
+            // send an update to all clients which have joined a specific group
+            await _hubContext.Clients.Group(groupName).SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
+
+            // send a broadcast to all clients
+            //await _hubContext.Clients.All.SendAsync("ReceiveBroadcast", policyCheckerResult);
         }
-
-        public async Task SendPolicyResultAsync(string groupName, PolicyCheckerResult policyCheckerResult)
+        catch (Exception ex)
         {
-            try
-            {
-                // send an update to all clients which have joined a specific group
-                await _hubContext.Clients.Group(groupName).SendAsync("ReceivePolicyCheckerResult", policyCheckerResult);
-
-                // send a broadcast to all clients
-                //await _hubContext.Clients.All.SendAsync("ReceiveBroadcast", policyCheckerResult);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending SignalR update");
-            }
+            _logger.LogError(ex, "Error sending SignalR update");
         }
+    }
 
-        public async Task SendProgressAsync(string requestId, int progress)
+    public async Task SendProgressAsync(string requestId, int progress)
+    {
+        try
         {
-            try
-            {
-                await _hubContext.Clients.Group(requestId).SendAsync("ReceiveProgress", progress);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending SignalR progress update");
-            }
+            await _hubContext.Clients.Group(requestId).SendAsync("ReceiveProgress", progress);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending SignalR progress update");
         }
     }
 }
