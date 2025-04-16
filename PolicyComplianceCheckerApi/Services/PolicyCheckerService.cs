@@ -63,7 +63,7 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         var policyChunks = ChunkDocument(policyFileContent, availableTokens);
 
-        var violationsFileName = "";
+        var violationsFileName = string.Empty;
 
         var allViolations = new StringBuilder();
 
@@ -96,6 +96,7 @@ public class PolicyCheckerService : IPolicyCheckerService
 
             violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
         }
+
         var engagementLog = new EngagementLog
         {
             DocumentType = DocumentType.Engagement.ToString(),

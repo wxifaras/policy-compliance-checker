@@ -76,7 +76,7 @@ public class AzureCosmosDBService : IAzureCosmosDBService
             var response = await query.ReadNextAsync();
             policyComplianceLogs.AddRange(response);
         }
-
+        
         return policyComplianceLogs;
     }
 
@@ -98,8 +98,6 @@ public class AzureCosmosDBService : IAzureCosmosDBService
             var response = await query.ReadNextAsync();
             engagementComplianceLogs.AddRange(response);
         }
-
         return engagementComplianceLogs;
     }
-
 }

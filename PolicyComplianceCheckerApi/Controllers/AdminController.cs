@@ -63,7 +63,7 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var logs = await _cosmosDBService.GetPolicyComplianceLogs("Policy", userId);
+            var logs = await _cosmosDBService.GetPolicyComplianceLogs(DocumentType.Policy.ToString(), userId);
             return Ok(logs);
         }
         catch (Exception ex)
@@ -82,7 +82,7 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var logs = await _cosmosDBService.GetEngagementLogs("Engagement", userId);
+            var logs = await _cosmosDBService.GetEngagementLogs(DocumentType.Engagement.ToString(), userId);
             return Ok(logs);
         }
         catch (Exception ex)
