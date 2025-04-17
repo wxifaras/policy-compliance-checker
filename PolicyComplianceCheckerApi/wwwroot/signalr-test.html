@@ -105,9 +105,6 @@
 
             // Add the formatted result to the policy results div
             policyResultsDiv.innerHTML = resultHtml;
-
-            // Also add a notification in the messages section
-            addMessage(`<span style="color: purple;">Received policy check result with ${result.violationsCount} violations</span>`);
         }
 
         function receiveProgress(progress) {
