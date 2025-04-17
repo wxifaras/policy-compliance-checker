@@ -1,6 +1,6 @@
 ﻿namespace PolicyComplianceCheckerApi.Models;
 
-public class PolicyCheckerResult
+public record PolicyCheckerResult
 {
     public string ViolationsSasUri { get; set; }
     public int ViolationsCount { get; set; }
