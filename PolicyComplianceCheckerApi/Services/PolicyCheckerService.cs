@@ -86,46 +86,62 @@ public class PolicyCheckerService : IPolicyCheckerService
             policyChunkNumber++;
         }
 
-        var violationsSas = string.Empty;
-        if (allViolations.Length == 0)
+        if (userId == "Validation")
         {
-            _logger.LogInformation($"No violations found in the engagement letter. {engagementLetter} for given policy {policyFileName}.");
+            _logger.LogInformation($"Validation mode: documents won't be added to stroage.");
+            var policyCheckerResult = new PolicyCheckerResult
+            {
+                EngagementLetterName = engagementLetter,
+                ViolationsContent = allViolations.ToString(),
+                PolicyFileName = policyFileName,
+                PolicyVersion = versionId
+            };
+
+            return policyCheckerResult;
         }
         else
         {
-            // Upload violations markdown report and engagement letter to Azure Storage
-            violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
+            var violationsSas = string.Empty;
+            if (allViolations.Length == 0)
+            {
+                _logger.LogInformation($"No violations found in the engagement letter. {engagementLetter} for given policy {policyFileName}.");
+            }
+            else
+            {
+                // Upload violations markdown report and engagement letter to Azure Storage
+                violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
 
-            var binaryData = BinaryData.FromString(allViolations.ToString());
+                var binaryData = BinaryData.FromString(allViolations.ToString());
 
-            await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, violationsFileName);
+                await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, violationsFileName);
 
-            binaryData = BinaryData.FromString(engagementLetterContent);
+                binaryData = BinaryData.FromString(engagementLetterContent);
 
-            violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
+                violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
+            }
+
+            var engagementLog = new EngagementLog
+            {
+                DocumentType = DocumentType.Engagement.ToString(),
+                UserId = userId,
+                EngagementLetter = engagementLetter,
+                PolicyFile = policyFileName,
+                PolicyFileVersionId = versionId,
+                PolicyViolationsFile = violationsFileName
+            };
+
+            await _cosmosDBService.AddEngagementLogAsync(engagementLog);
+
+            var policyCheckerResult = new PolicyCheckerResult
+            {
+                EngagementLetterName = engagementLetter,
+                ViolationsSasUri = violationsSas,
+                PolicyFileName = policyFileName,
+                PolicyVersion = versionId
+            };
+
+            return policyCheckerResult;
         }
-
-        var engagementLog = new EngagementLog
-        {
-            DocumentType = DocumentType.Engagement.ToString(),
-            UserId = userId,
-            EngagementLetter = engagementLetter,
-            PolicyFile = policyFileName,
-            PolicyFileVersionId = versionId,
-            PolicyViolationsFile = violationsFileName
-        };
-
-        await _cosmosDBService.AddEngagementLogAsync(engagementLog);
-
-        var policyCheckerResult = new PolicyCheckerResult
-        {
-            EngagementLetterName = engagementLetter,
-            ViolationsSasUri = violationsSas,
-            PolicyFileName = policyFileName,
-            PolicyVersion = versionId
-        };
-
-        return policyCheckerResult;
     }
 
     private async Task<string> ReadDocumentContentAsync(Uri documentUri)
