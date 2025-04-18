@@ -62,14 +62,14 @@ public class PolicyCheckerService : IPolicyCheckerService
         //Instead of analyzing the entire engagement letter at once, we now split it into smaller pieces 
         var engagementChunks = ChunkDocument(engagementLetterContent, _azureOpenAIService.MaxTokens / 2); // Safe split
 
-        int totalChunks = engagementChunks.Count;
-        int processedChunks = 0;
+        var totalChunks = engagementChunks.Count;
+        var processedChunks = 0;
 
-        AsyncRetryPolicy<string> retryPolicy = Policy<string>
+        var retryPolicy = Policy<string>
         .Handle<Exception>()
         .WaitAndRetryAsync(
-            retryCount: 3,
-            sleepDurationProvider: _ => TimeSpan.FromSeconds(60),
+            retryCount: _azureOpenAIService.RetryCount,
+            sleepDurationProvider: _ => TimeSpan.FromSeconds(_azureOpenAIService.RetryDelayInSeconds),
             onRetry: (exception, timespan, retryCount, context) =>
             {
                 _logger.LogWarning($"Retry {retryCount} failed after {timespan.TotalSeconds}s: {exception}");
@@ -79,16 +79,24 @@ public class PolicyCheckerService : IPolicyCheckerService
         {
             //calculate how much space we have left in the token budget for the policy chunk
             var engagementTokens = _tokenizer.CountTokens(engagementChunk);
+
             _logger.LogInformation($"Analyzing engagement chunk of size {engagementTokens} tokens.");
+
             var availableTokens = _azureOpenAIService.MaxTokens - engagementTokens - 1000; // Reserve buffer
 
             var policyChunks = ChunkDocument(policyFileContent, availableTokens);
 
-            int policyChunkNumber = 1;
+            var policyChunkNumber = 1;
+
             foreach (var policyChunk in policyChunks)
             {
                 var policyChunkTokenCount = _tokenizer.CountTokens(policyChunk);
+
                 _logger.LogInformation($"Analyzing policy chunk of size {policyChunkTokenCount} tokens.");
+
+                var totalTokensPerRequest = engagementTokens + policyChunkTokenCount;
+
+                _logger.LogInformation($"Total tokens per request: {totalTokensPerRequest}.");
 
                 // Use Polly to retry AnalyzePolicy
                 var violation = await retryPolicy.ExecuteAsync(() =>
@@ -100,7 +108,10 @@ public class PolicyCheckerService : IPolicyCheckerService
                 }
 
                 // user realistic progress updates.
-                int overallProgress = (int)((float)(++processedChunks) / (totalChunks * policyChunks.Count) * 100);
+                var overallProgress = (int)((float)(++processedChunks) / (totalChunks * policyChunks.Count) * 100);
+                
+                _logger.LogInformation($"Overall progress: {overallProgress}%");
+
                 await _azureSignalRService.SendProgressAsync(userId, overallProgress);
 
                 policyChunkNumber++;
@@ -135,7 +146,7 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         await _cosmosDBService.AddEngagementLogAsync(engagementLog);
 
-        return new PolicyCheckerResult
+        var policyCheckerResult = new PolicyCheckerResult
         {
             EngagementLetterName = engagementLetter,
             ViolationsSasUri = violationsSas,
@@ -143,6 +154,7 @@ public class PolicyCheckerService : IPolicyCheckerService
             PolicyVersion = versionId
         };
 
+        return policyCheckerResult;
     }
 
     private async Task<string> ReadDocumentContentAsync(Uri documentUri)

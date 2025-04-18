@@ -13,6 +13,8 @@ public class AzureOpenAIService : IAzureOpenAIService
     private readonly AzureOpenAIClient _azureOpenAIClient;
     private readonly string _deploymentName;
     private int _maxTokens;
+    private int _retryCount;
+    private int _retryDelayInSeconds;
 
     public AzureOpenAIService(
         IOptions<AzureOpenAIOptions> options,
@@ -23,6 +25,8 @@ public class AzureOpenAIService : IAzureOpenAIService
         _deploymentName = options.Value.DeploymentName;
 
         _maxTokens = options.Value.MaxTokens;
+        _retryCount = options.Value.RetryCount;
+        _retryDelayInSeconds = options.Value.RetryDelayInSeconds;
 
         _azureOpenAIClient = new(
            new Uri(options.Value.EndPoint),
@@ -30,6 +34,10 @@ public class AzureOpenAIService : IAzureOpenAIService
     }
 
     public int MaxTokens => _maxTokens;
+
+    public int RetryCount => _retryCount;
+
+    public int RetryDelayInSeconds => _retryDelayInSeconds;
 
     public async Task<string> AnalyzePolicy(string engagementLetter, string policyChunk)
     {

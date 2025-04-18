@@ -17,4 +17,10 @@ public record AzureOpenAIOptions
 
     [Required]
     public int MaxTokens { get; set; }
+
+    [Required]
+    public int RetryCount { get; set; } = 3;
+
+    [Required]
+    public int RetryDelayInSeconds { get; set; } = 60;
 }
