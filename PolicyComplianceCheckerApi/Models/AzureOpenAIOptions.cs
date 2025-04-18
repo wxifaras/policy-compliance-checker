@@ -14,4 +14,7 @@ public record AzureOpenAIOptions
 
     [Required]
     public string ApiKey { get; set; }
+
+    [Required]
+    public int MaxTokens { get; set; }
 }

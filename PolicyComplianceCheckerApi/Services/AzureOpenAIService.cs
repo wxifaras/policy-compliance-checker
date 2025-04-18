@@ -12,6 +12,7 @@ public class AzureOpenAIService : IAzureOpenAIService
     private ILogger<AzureOpenAIService> _logger;
     private readonly AzureOpenAIClient _azureOpenAIClient;
     private readonly string _deploymentName;
+    private int _maxTokens;
 
     public AzureOpenAIService(
         IOptions<AzureOpenAIOptions> options,
@@ -21,10 +22,14 @@ public class AzureOpenAIService : IAzureOpenAIService
 
         _deploymentName = options.Value.DeploymentName;
 
+        _maxTokens = options.Value.MaxTokens;
+
         _azureOpenAIClient = new(
            new Uri(options.Value.EndPoint),
            new AzureKeyCredential(options.Value.ApiKey));
     }
+
+    public int MaxTokens => _maxTokens;
 
     public async Task<string> AnalyzePolicy(string engagementLetter, string policyChunk)
     {

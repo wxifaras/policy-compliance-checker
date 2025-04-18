@@ -17,8 +17,6 @@ public class PolicyCheckerService : IPolicyCheckerService
     private readonly IAzureSignalRService _azureSignalRService;
     private readonly IAzureCosmosDBService _cosmosDBService;
 
-    private const int MAX_TOKENS = 128000; // set for gpt-4o, update as model changes
-
     public PolicyCheckerService(
         ILogger<PolicyCheckerService> logger,
         IAzureOpenAIService azureOpenAIService,
@@ -60,7 +58,7 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         var engagementLetterTokens = _tokenizer.CountTokens(engagementLetterContent);
 
-        var availableTokens = MAX_TOKENS - engagementLetterTokens - 1000; // Reserve 1000 tokens for prompts
+        var availableTokens = _azureOpenAIService.MaxTokens - engagementLetterTokens - 1000; // Reserve 1000 tokens for prompts
 
         var policyChunks = ChunkDocument(policyFileContent, availableTokens);
 
