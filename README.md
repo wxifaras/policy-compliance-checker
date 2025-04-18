@@ -89,6 +89,9 @@ The API is versioned using URL path versioning. The current version is v1.
   - Results are delivered asynchronously via SignalR
 - GET api/v1/policychecker/get-policies
   - Gets a dictionary of all policies and their versions
+ 
+## SignalR Endpoints
+The application exposes a SignalR hub at /policycheckerhub
 
 # Document Processing Flow
 1. Upload Policy Document: Admin uploads a policy document that gets stored with version tracking  
