@@ -108,7 +108,7 @@ The application exposes a SignalR hub at /policycheckerhub
 - Azure Cosmos DB provides globally distributed, low-latency storage for logs
 
 # Security Notes
-- Consider using Managed Identities with DefaultAzureCredential
+- Consider using Managed Identities and updating the code to use DefaultAzureCredential
 - Store sensitive configuration values in Azure Key Vault or use User Secrets during development
 - The included appsettings.Local.json contains placeholder API keys that should be replaced with actual keys
 - Ensure proper CORS and authentication are configured for production deployments
