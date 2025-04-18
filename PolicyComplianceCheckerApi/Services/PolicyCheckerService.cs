@@ -88,7 +88,7 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         if (userId == "Validation")
         {
-            _logger.LogInformation($"Validation mode: documents won't be added to stroage.");
+            _logger.LogInformation($"Validation" );
             var policyCheckerResult = new PolicyCheckerResult
             {
                 EngagementLetterName = engagementLetter,
@@ -96,7 +96,7 @@ public class PolicyCheckerService : IPolicyCheckerService
                 PolicyFileName = policyFileName,
                 PolicyVersion = versionId
             };
-
+            _logger.LogInformation($"ValidationsContent: {policyCheckerResult.ViolationsContent}");
             return policyCheckerResult;
         }
         else

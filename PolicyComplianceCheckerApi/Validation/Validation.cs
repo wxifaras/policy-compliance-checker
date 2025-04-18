@@ -25,11 +25,12 @@ public class ValidationUtility : IValidationUtility
 
     public async Task<ValidationResponse> EvaluateSearchResultAsync(ValidationRequest validationRequest)
     {
-        ValidationResponse validationResponse = new ValidationResponse();
+        //add a delay b/c of rate limiting 50k
 
-           var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-           var evaluationSchemaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Validation", "EvaluationSchema.json");
-           var evaluationSchema = await File.ReadAllTextAsync(evaluationSchemaPath);
+        ValidationResponse validationResponse = new ValidationResponse();
+        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        var evaluationSchemaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Validation", "EvaluationSchema.json");
+        var evaluationSchema = await File.ReadAllTextAsync(evaluationSchemaPath);
 
         var evaluationPrompt = $@"
             You are an AI assistant tasked with evaluating the correctness of generated content. The generated content represents potential violations found in a policy. 
@@ -49,7 +50,7 @@ public class ValidationUtility : IValidationUtility
 
             **Important Notes**:
             - The rating must always be one of the following values: 1, 3, or 5.
-            - Construct a JSON object containing your thoughts, the rating, the ground truth content, and the generated content. Return this JSON object as the response.
+            - Construct a JSON object containing the Generated Content, Rating, your Thoughts,and the ground truth content. Return this JSON object as the response.
 
             **Input Data**:
             - Ground truth content: {validationRequest.Violations}
@@ -58,30 +59,30 @@ public class ValidationUtility : IValidationUtility
 
         var client = _azureOpenAIClient.GetChatClient(_azureOpenAIDeployment);
 
-        var chat = new List<ChatMessage>()
+        var messageContent = new List<ChatMessage>()
             {
                 new SystemChatMessage(evaluationPrompt)
             };
 
-        var chatUpdates = await client.CompleteChatAsync(
-            chat,
+        var messageContentUpdates = await client.CompleteChatAsync(
+            messageContent,
             new ChatCompletionOptions()
             {
                 ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat("Eval", BinaryData.FromString(evaluationSchema))
             });
 
-            var evaluationResponse = JsonSerializer.Deserialize<Evaluation>(chatUpdates.Value.Content[0].Text);
+        var evaluationResponse = JsonSerializer.Deserialize<Evaluation>(messageContentUpdates.Value.Content[0].Text);
 
-            evaluationResponse = new Evaluation
-            {
-                GeneratedContent = evaluationResponse.GeneratedContent,
-                Rating = evaluationResponse.Rating,
-                Thoughts = evaluationResponse.Thoughts,
-                GroundTruthContent = evaluationResponse.GroundTruthContent
-            };
+        evaluationResponse = new Evaluation
+        {
+            GeneratedContent = evaluationResponse.GeneratedContent,
+            Rating = evaluationResponse.Rating,
+            Thoughts = evaluationResponse.Thoughts,
+            GroundTruthContent = evaluationResponse.GroundTruthContent
+        };
 
-            validationResponse.Evaluation = evaluationResponse;
+        validationResponse.Evaluation = evaluationResponse;
 
-        return validationResponse;
+       return validationResponse;
     }
 }

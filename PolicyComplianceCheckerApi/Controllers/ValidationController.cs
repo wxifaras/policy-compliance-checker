@@ -52,9 +52,7 @@ public class ValidationController : ControllerBase
 
         try
         {
-            _logger.LogInformation($"File content: {fileContent}");
             validationRequests = JsonSerializer.Deserialize<List<ValidationRequest>>(fileContent, _jsonSerializerOptions);
-
         }
         catch (JsonException ex)
         {
@@ -80,16 +78,15 @@ public class ValidationController : ControllerBase
 
         foreach (var request in validationRequests)
         {
-                var policyCheckerResult = await _policyCheckerService.CheckPolicyAsync(
-                    request.EngagementLetterFileName,
-                    request.PolicyName,
-                    request.PolicyVersion,
-                    "Validation"   //using Validation as the userId to avoid adding the document to storage
+           var policyCheckerResult = await _policyCheckerService.CheckPolicyAsync(
+               request.EngagementLetterFileName,
+               request.PolicyName,
+               request.PolicyVersion,
+               "Validation" 
                 );
-             request.LLMResponse = policyCheckerResult.ViolationsContent;
-
-            var response = await _validationUtility.EvaluateSearchResultAsync(request);
-            validationResponses.Add(response);
+           request.LLMResponse = policyCheckerResult.ViolationsContent;
+           var response = await _validationUtility.EvaluateSearchResultAsync(request);
+           validationResponses.Add(response);
         }
 
         return validationResponses;
