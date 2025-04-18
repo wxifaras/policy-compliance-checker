@@ -70,7 +70,9 @@ public class PolicyCheckerService : IPolicyCheckerService
 
         foreach (var policyChunk in policyChunks)
         {
-            _logger.LogInformation($"Analyzing policy chunk of size {policyChunk.Length} tokens.");
+            var policyChunkTokenCount = _tokenizer.CountTokens(policyChunk);
+            _logger.LogInformation($"Analyzing policy chunk of size {policyChunkTokenCount} tokens.");
+
             var violation = await _azureOpenAIService.AnalyzePolicy(engagementLetterContent, policyChunk);
 
             if (!string.IsNullOrWhiteSpace(violation) && !violation.Contains("No violations found.", StringComparison.OrdinalIgnoreCase))
