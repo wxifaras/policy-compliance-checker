@@ -4,6 +4,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.ML.Tokenizers;
 using PolicyComplianceCheckerApi.Models;
 using System.Text;
+using Polly;
+using Polly.Retry;
 
 namespace PolicyComplianceCheckerApi.Services;
 
@@ -16,8 +18,6 @@ public class PolicyCheckerService : IPolicyCheckerService
     private readonly DocumentIntelligenceClient _documentIntelligenceClient;
     private readonly IAzureSignalRService _azureSignalRService;
     private readonly IAzureCosmosDBService _cosmosDBService;
-
-    private const int MAX_TOKENS = 128000; // set for gpt-4o, update as model changes
 
     public PolicyCheckerService(
         ILogger<PolicyCheckerService> logger,
@@ -48,63 +48,89 @@ public class PolicyCheckerService : IPolicyCheckerService
     /// <param name="versionId">VersionId of the blob</param>
     /// <param name="userId">UserId of the user</param>
     /// <returns>SAS Uri of Policy Violations Markdown Report</returns>
-    public async Task<PolicyCheckerResult> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId, string userId)
+   public async Task<PolicyCheckerResult> CheckPolicyAsync(string engagementLetter, string policyFileName, string versionId, string userId)
     {
         var engagementSasUri = await _azureStorageService.GetEngagementSasUriAsync(engagementLetter);
-
         var engagementLetterContent = await ReadDocumentContentAsync(new Uri(engagementSasUri));
 
         var policySas = await _azureStorageService.GetPolicySasUriAsync(policyFileName, versionId);
-
         var policyFileContent = await ReadDocumentContentAsync(new Uri(policySas));
 
-        var engagementLetterTokens = _tokenizer.CountTokens(engagementLetterContent);
-
-        var availableTokens = MAX_TOKENS - engagementLetterTokens - 1000; // Reserve 1000 tokens for prompts
-
-        var policyChunks = ChunkDocument(policyFileContent, availableTokens);
-
         var violationsFileName = string.Empty;
-
         var allViolations = new StringBuilder();
 
-        int policyChunkNumber = 1;
+        //Instead of analyzing the entire engagement letter at once, we now split it into smaller pieces 
+        var engagementChunks = ChunkDocument(engagementLetterContent, _azureOpenAIService.MaxTokens / 2); // Safe split
 
-        foreach (var policyChunk in policyChunks)
-        {
-            var policyChunkTokenCount = _tokenizer.CountTokens(policyChunk);
+        var totalChunks = engagementChunks.Count;
+        var processedChunks = 0;
 
-            _logger.LogInformation($"Analyzing policy chunk of size {policyChunkTokenCount} tokens.");
-
-            var violation = await _azureOpenAIService.AnalyzePolicy(engagementLetterContent, policyChunk);
-
-            if (!string.IsNullOrWhiteSpace(violation) && !violation.Contains("No violations found.", StringComparison.OrdinalIgnoreCase))
+        var retryPolicy = Policy<string>
+        .Handle<Exception>()
+        .WaitAndRetryAsync(
+            retryCount: _azureOpenAIService.RetryCount,
+            sleepDurationProvider: _ => TimeSpan.FromSeconds(_azureOpenAIService.RetryDelayInSeconds),
+            onRetry: (exception, timespan, retryCount, context) =>
             {
-                allViolations.AppendLine(violation);
+                _logger.LogWarning($"Retry {retryCount} failed after {timespan.TotalSeconds}s: {exception}");
+            });
+
+        var largestEngagementChunkCount = _tokenizer.CountTokens(engagementChunks[0]);
+        var availableTokens = _azureOpenAIService.MaxTokens - largestEngagementChunkCount - 1000; // Reserve buffer
+        var policyChunks = ChunkDocument(policyFileContent, availableTokens);
+
+        foreach (var engagementChunk in engagementChunks)
+        {
+            //calculate how much space we have left in the token budget for the policy chunk
+            var engagementTokens = _tokenizer.CountTokens(engagementChunk);
+
+            _logger.LogInformation($"Analyzing engagement chunk of size {engagementTokens} tokens.");                     
+
+            var policyChunkNumber = 1;
+
+            foreach (var policyChunk in policyChunks)
+            {
+                var policyChunkTokenCount = _tokenizer.CountTokens(policyChunk);
+
+                _logger.LogInformation($"Analyzing policy chunk of size {policyChunkTokenCount} tokens.");
+
+                var totalTokensPerRequest = engagementTokens + policyChunkTokenCount;
+
+                _logger.LogInformation($"Total tokens per request: {totalTokensPerRequest}.");
+
+                // Use Polly to retry AnalyzePolicy
+                var violation = await retryPolicy.ExecuteAsync(() =>
+                    _azureOpenAIService.AnalyzePolicy(engagementChunk, policyChunk));
+
+                if (!string.IsNullOrWhiteSpace(violation) && !violation.Contains("No violations found.", StringComparison.OrdinalIgnoreCase))
+                {
+                    allViolations.AppendLine(violation);
+                }
+
+                // user realistic progress updates.
+                var overallProgress = (int)((float)(++processedChunks) / (totalChunks * policyChunks.Count) * 100);
+                
+                _logger.LogInformation($"Overall progress: {overallProgress}%");
+
+                await _azureSignalRService.SendProgressAsync(userId, overallProgress);
+
+                policyChunkNumber++;
             }
-
-            // update progress
-            await _azureSignalRService.SendProgressAsync(userId, (int)((float) policyChunkNumber / policyChunks.Count * 100));
-
-            policyChunkNumber++;
         }
 
         var violationsSas = string.Empty;
         if (allViolations.Length == 0)
         {
-            _logger.LogInformation($"No violations found in the engagement letter. {engagementLetter} for given policy {policyFileName}.");
+            _logger.LogInformation($"No violations found in the engagement letter: {engagementLetter} for policy: {policyFileName}.");
         }
         else
         {
-            // Upload violations markdown report and engagement letter to Azure Storage
             violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
-
             var binaryData = BinaryData.FromString(allViolations.ToString());
 
             await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, violationsFileName);
 
             binaryData = BinaryData.FromString(engagementLetterContent);
-
             violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
         }
 
