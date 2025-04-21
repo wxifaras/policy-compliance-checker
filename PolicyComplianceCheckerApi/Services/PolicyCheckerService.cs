@@ -96,8 +96,6 @@ public class PolicyCheckerService : IPolicyCheckerService
 
             _logger.LogInformation($"Analyzing engagement chunk of size {engagementTokens} tokens.");                     
 
-            var policyChunkNumber = 1;
-
             foreach (var policyChunk in policyChunks)
             {
                 var policyChunkTokenCount = _tokenizer.CountTokens(policyChunk);
@@ -123,8 +121,6 @@ public class PolicyCheckerService : IPolicyCheckerService
                 _logger.LogInformation($"Overall progress: {overallProgress}%");
 
                 await _azureSignalRService.SendProgressAsync(userId, overallProgress);
-
-                policyChunkNumber++;
             }
         }
 
