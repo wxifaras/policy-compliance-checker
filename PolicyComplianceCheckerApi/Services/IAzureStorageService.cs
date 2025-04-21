@@ -9,4 +9,5 @@ public interface IAzureStorageService
     Task UploadFileToEngagementsContainerAsync(BinaryData file, string fileName);
     Task<string> GetEngagementSasUriAsync(string fileName);
     Task<Dictionary<string, List<PolicesWithVersionsResponse>>> GetPoliciesWithVersionsAsync();
+    Task<BinaryData> ConvertSasUriToBinaryData(string sasUri);
 }
