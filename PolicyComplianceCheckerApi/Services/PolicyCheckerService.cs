@@ -75,16 +75,16 @@ public class PolicyCheckerService : IPolicyCheckerService
                 _logger.LogWarning($"Retry {retryCount} failed after {timespan.TotalSeconds}s: {exception}");
             });
 
+        var largestEngagementChunkCount = _tokenizer.CountTokens(engagementChunks[0]);
+        var availableTokens = _azureOpenAIService.MaxTokens - largestEngagementChunkCount - 1000; // Reserve buffer
+        var policyChunks = ChunkDocument(policyFileContent, availableTokens);
+
         foreach (var engagementChunk in engagementChunks)
         {
             //calculate how much space we have left in the token budget for the policy chunk
             var engagementTokens = _tokenizer.CountTokens(engagementChunk);
 
-            _logger.LogInformation($"Analyzing engagement chunk of size {engagementTokens} tokens.");
-
-            var availableTokens = _azureOpenAIService.MaxTokens - engagementTokens - 1000; // Reserve buffer
-
-            var policyChunks = ChunkDocument(policyFileContent, availableTokens);
+            _logger.LogInformation($"Analyzing engagement chunk of size {engagementTokens} tokens.");                     
 
             var policyChunkNumber = 1;
 
