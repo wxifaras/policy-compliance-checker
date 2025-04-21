@@ -57,9 +57,9 @@ public class AzureCosmosDBService : IAzureCosmosDBService
         return response.Resource;
     }
 
-    public async Task<List<PolicyLog>> GetPolicyComplianceLogs(string documentType, string? userId = null)
+    public async Task<List<TLog>> GetLogsAsync<TLog>(string documentType, string? userId = null) where TLog : class, ILog
     {
-        var queryable = _logContainer.GetItemLinqQueryable<PolicyLog>(allowSynchronousQueryExecution: false)
+        var queryable = _logContainer.GetItemLinqQueryable<TLog>(allowSynchronousQueryExecution: false)
             .Where(p => p.DocumentType == documentType);
 
         if (!string.IsNullOrEmpty(userId))
@@ -68,36 +68,14 @@ public class AzureCosmosDBService : IAzureCosmosDBService
         }
 
         var query = queryable.ToFeedIterator();
-        var policyComplianceLogs = new List<PolicyLog>();
+        var logs = new List<TLog>();
 
         while (query.HasMoreResults)
         {
             var response = await query.ReadNextAsync();
-            policyComplianceLogs.AddRange(response);
-        }
-        
-        return policyComplianceLogs;
-    }
-
-    public async Task<List<EngagementLog>> GetEngagementLogs(string documentType, string? userId = null)
-    {
-        var queryable = _logContainer.GetItemLinqQueryable<EngagementLog>(allowSynchronousQueryExecution: false)
-            .Where(p => p.DocumentType == documentType);
-
-        if (!string.IsNullOrEmpty(userId))
-        {
-            queryable = queryable.Where(p => p.UserId == userId);
+            logs.AddRange(response);
         }
 
-        var query = queryable.ToFeedIterator();
-        var engagementComplianceLogs = new List<EngagementLog>();
-
-        while (query.HasMoreResults)
-        {
-            var response = await query.ReadNextAsync();
-            engagementComplianceLogs.AddRange(response);
-        }
-
-        return engagementComplianceLogs;
+        return logs;
     }
 }

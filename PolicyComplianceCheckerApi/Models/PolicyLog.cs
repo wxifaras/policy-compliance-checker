@@ -6,7 +6,13 @@ public enum DocumentType
     Policy
 }
 
-public class LogBase
+public interface ILog
+{
+    string DocumentType { get; }
+    string? UserId { get; }
+}
+
+public class LogBase : ILog
 {
     public Guid id { get; set; } = Guid.NewGuid();
     public string DocumentType { get; set; } // Partition Key

@@ -6,6 +6,6 @@ public interface IAzureCosmosDBService
 {
     Task<PolicyLog> AddPolicyComplianceLogAsync(PolicyLog log);
     Task<EngagementLog> AddEngagementLogAsync(EngagementLog log);
-    Task<List<PolicyLog>> GetPolicyComplianceLogs(string documentType, string userId);
-    Task<List<EngagementLog>> GetEngagementLogs(string documentType, string userId);
+    Task<List<TLog>> GetLogsAsync<TLog>(string documentType, string? userId = null)
+        where TLog : class, ILog;
 }
