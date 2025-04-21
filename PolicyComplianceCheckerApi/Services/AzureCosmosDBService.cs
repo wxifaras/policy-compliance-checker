@@ -97,6 +97,7 @@ public class AzureCosmosDBService : IAzureCosmosDBService
             var response = await query.ReadNextAsync();
             engagementComplianceLogs.AddRange(response);
         }
+
         return engagementComplianceLogs;
     }
 }
