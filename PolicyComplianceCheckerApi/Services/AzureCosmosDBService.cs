@@ -23,11 +23,10 @@ public class AzureCosmosDBService : IAzureCosmosDBService
                {
                    TenantId = options.Value.TenantId,
                    ExcludeEnvironmentCredential = true
-               })
-       );
+               }));
 
-       _logContainer = cosmosClient.GetContainer(options.Value.DatabaseName, options.Value.ContainerName);
-       _logger = logger;
+        _logContainer = cosmosClient.GetContainer(options.Value.DatabaseName, options.Value.ContainerName);
+        _logger = logger;
     }
 
     public async Task<PolicyLog> AddPolicyComplianceLogAsync(PolicyLog log)
