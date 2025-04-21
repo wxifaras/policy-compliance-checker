@@ -144,6 +144,19 @@ public class PolicyCheckerService : IPolicyCheckerService
         return result.Content;
     }
 
+    private async Task<string> ReadDocumentContentAsync(BinaryData document)
+    {
+        Operation<AnalyzeResult> operation = await _documentIntelligenceClient.AnalyzeDocumentAsync(
+            WaitUntil.Completed,
+            "prebuilt-read",
+            document
+        );
+
+        AnalyzeResult result = operation.Value;
+
+        return result.Content;
+    }
+
     /// <summary>
     /// Splits the document into chunks of approximately the size of the available tokens remaining in the context window, which is
     /// determined by subtracing the number of tokens of the engagement letter and a buffer of a specified number of tokens from

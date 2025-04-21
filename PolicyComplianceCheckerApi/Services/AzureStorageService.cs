@@ -116,6 +116,15 @@ public class AzureStorageService : IAzureStorageService
         return policiesWithVersions;
     }
 
+    public async Task<BinaryData> ConvertSasUriToBinaryData(string sasUri)
+    {
+        var blobClient = new BlobClient(new Uri(sasUri));
+
+        BlobDownloadResult result = await blobClient.DownloadContentAsync();
+
+        return result.Content;
+    }
+
     private static BlobSasBuilder BuildSasUri(string fileName, string container)
     {
         var sasBuilder = new BlobSasBuilder
