@@ -75,6 +75,16 @@ public class PolicyCheckerService : IPolicyCheckerService
                 _logger.LogWarning($"Retry {retryCount} failed after {timespan.TotalSeconds}s: {exception}");
             });
 
+        // Token management strategy:
+        // 1. We use the first engagement chunk as a reference for calculating available tokens because:
+        //    - All chunks are created with equal maximum size (except possibly the last one)
+        //    - Using the first chunk provides a reliable upper bound for token consumption
+        // 2. We calculate available tokens for policy chunks by subtracting:
+        //    - The token count of a typical engagement chunk (using the first one as reference)
+        //    - A safety buffer (1000 tokens)
+        //    - This ensures we stay within OpenAI's token limits during each comparison
+        // 3. We process each engagement chunk against each policy chunk individually, rather than
+        //    trying to process the entire documents at once, enabling analysis of large documents
         var largestEngagementChunkCount = _tokenizer.CountTokens(engagementChunks[0]);
         var availableTokens = _azureOpenAIService.MaxTokens - largestEngagementChunkCount - 1000; // Reserve buffer
         var policyChunks = ChunkDocument(policyFileContent, availableTokens);
