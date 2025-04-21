@@ -150,7 +150,7 @@ public class PolicyCheckerService : IPolicyCheckerService
             PolicyViolationsFile = violationsFileName
         };
 
-        await _cosmosDBService.AddEngagementLogAsync(engagementLog);
+        await _cosmosDBService.AddLogAsync<EngagementLog>(engagementLog);
 
         var policyCheckerResult = new PolicyCheckerResult
         {

@@ -43,7 +43,7 @@ public class AdminController : ControllerBase
                 PolicyFile = request.Policy.FileName
             };
 
-            await _cosmosDBService.AddPolicyComplianceLogAsync(policyLog);
+            await _cosmosDBService.AddLogAsync<PolicyLog>(policyLog);
 
             return Ok(versionId);
         }

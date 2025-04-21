@@ -29,25 +29,11 @@ public class AzureCosmosDBService : IAzureCosmosDBService
         _logger = logger;
     }
 
-    public async Task<PolicyLog> AddPolicyComplianceLogAsync(PolicyLog log)
+    public async Task<TLog> AddLogAsync<TLog>(TLog log) where TLog : class, ILog
     {
-        _logger.LogInformation($"Adding policy compliance log for user {log.UserId} and document type {log.DocumentType}");
+        _logger.LogInformation($"Adding log for user {log.UserId} and document type {log.DocumentType}");
 
-        ItemResponse<PolicyLog> response = await _logContainer.CreateItemAsync(
-            item: log,
-            partitionKey: new PartitionKeyBuilder()
-                .Add(log.DocumentType)
-                .Add(log.UserId)
-                .Build());
-
-        return response.Resource;
-    }
-
-    public async Task<EngagementLog> AddEngagementLogAsync(EngagementLog log)
-    {
-        _logger.LogInformation($"Adding engagement log for user {log.UserId} and Engagement letter {log.EngagementLetter}");
-
-        ItemResponse<EngagementLog> response = await _logContainer.CreateItemAsync(
+        ItemResponse<TLog> response = await _logContainer.CreateItemAsync(
             item: log,
             partitionKey: new PartitionKeyBuilder()
                 .Add(log.DocumentType)
