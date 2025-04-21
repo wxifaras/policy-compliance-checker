@@ -41,6 +41,12 @@ The application requires configuration for various Azure services.
 ```json
 {
   "AzureOpenAIOptions": {
+    // Set MaxTokens to 10–30% less than the model's documented maximum to account for prompt length and token estimation.
+    // The actual maximum includes both input and output tokens, and token usage is estimated at request time.
+    // For large prompts, reduce this further to avoid exceeding the model's context limit.
+    "MaxTokens": 12800,
+    "RetryCount": 3,
+    "RetryDelayInSeconds": 60,
     "DeploymentName": "<your-openai-deployment-name>",
     "EndPoint": "<your-azure-openai-endpoint>",
     "ApiKey": "<your-azure-openai-api-key>"
