@@ -26,6 +26,8 @@ public class AzureStorageService : IAzureStorageService
 
     public async Task UploadFileToEngagementsContainerAsync(BinaryData file, string fileName)
     {
+        _logger.LogInformation($"Uploading File. {fileName}");
+
         var blobServiceClient = new BlobServiceClient(_storageConnectionString);
         var blobContainer = blobServiceClient.GetBlobContainerClient(_engagementsContainerName);
         var blobClient = blobContainer.GetBlobClient(fileName);
@@ -37,6 +39,8 @@ public class AzureStorageService : IAzureStorageService
 
     public async Task<string> UploadPolicyAsync(Stream imageStream, string fileName)
     {
+        _logger.LogInformation($"Uploading Policy File. {fileName}");
+
         var blobServiceClient = new BlobServiceClient(_storageConnectionString);
         var blobContainer = blobServiceClient.GetBlobContainerClient(_policiesContainer);
         var blobClient = blobContainer.GetBlobClient(fileName);
@@ -91,6 +95,8 @@ public class AzureStorageService : IAzureStorageService
 
     public async Task<Dictionary<string, List<PolicesWithVersionsResponse>>> GetPoliciesWithVersionsAsync()
     {
+        _logger.LogInformation($"Getting policies with versions from container: {_policiesContainer}");
+
         var containerClient = new BlobContainerClient(_storageConnectionString, _policiesContainer);
 
         var policiesWithVersions = new Dictionary<string, List<PolicesWithVersionsResponse>>();
@@ -118,6 +124,8 @@ public class AzureStorageService : IAzureStorageService
 
     public async Task<BinaryData> ConvertSasUriToBinaryData(string sasUri)
     {
+        _logger.LogInformation($"Converting SAS URI to BinaryData: {sasUri}.");
+
         var blobClient = new BlobClient(new Uri(sasUri));
 
         BlobDownloadResult result = await blobClient.DownloadContentAsync();

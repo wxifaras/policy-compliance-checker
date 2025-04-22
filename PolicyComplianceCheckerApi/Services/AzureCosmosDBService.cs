@@ -45,6 +45,8 @@ public class AzureCosmosDBService : IAzureCosmosDBService
 
     public async Task<List<TLog>> GetLogsAsync<TLog>(string documentType, string? userId = null) where TLog : class, ILog
     {
+        _logger.BeginScope($"Getting logs for document type {documentType} and user {userId}");
+
         var queryable = _logContainer.GetItemLinqQueryable<TLog>(allowSynchronousQueryExecution: false)
             .Where(p => p.DocumentType == documentType);
 
