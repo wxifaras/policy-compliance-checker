@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "GeneratedContent": {
+      "type": "string"
+    },
+    "Rating": {
+      "type": "integer"
+    },
+    "Thoughts": {
+      "type": "string"
+    },
+    "GroundTruthContent": {
+      "type": "string"
+    }
+  },
+  "required": [ "EngagementLetter", "GeneratedContent", "Rating", "Thoughts", "GroundTruthContent" ]
+}

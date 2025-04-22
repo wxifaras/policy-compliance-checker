@@ -1,4 +1,6 @@
 using Asp.Versioning;
+using Azure;
+using Azure.AI.OpenAI;
 using concierge_agent_api.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Azure.SignalR.Common;
@@ -7,6 +9,7 @@ using Microsoft.Extensions.Options;
 using PolicyComplianceCheckerApi.Hubs;
 using PolicyComplianceCheckerApi.Models;
 using PolicyComplianceCheckerApi.Services;
+using PolicyComplianceCheckerApi.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +55,15 @@ builder.Services.AddOptions<AzureDocIntelOptions>()
            .Bind(builder.Configuration.GetSection(AzureDocIntelOptions.AzureDocIntel))
            .ValidateDataAnnotations();
 
+builder.Services.AddSingleton(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Program>>();
+    var azureOpenAIOptions = sp.GetRequiredService<IOptions<AzureOpenAIOptions>>();
+
+    logger.LogInformation("Initializing OpenAI Client with endpoint: {Endpoint}", azureOpenAIOptions.Value.EndPoint);
+    return new AzureOpenAIClient(new Uri(azureOpenAIOptions.Value.EndPoint!), new AzureKeyCredential(azureOpenAIOptions.Value.ApiKey!));
+});
+
 builder.Services.AddSingleton<IAzureCosmosDBService>(sp =>
 {
     var cosmosDbOptions = sp.GetRequiredService<IOptions<CosmosDbOptions>>();
@@ -96,6 +108,14 @@ builder.Services.AddSingleton<IPolicyCheckerService>(sp =>
     var cosmosDbService = sp.GetRequiredService<IAzureCosmosDBService>();
 
     return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions, azureSignalRService, cosmosDbService);
+});
+
+builder.Services.AddSingleton<IValidationUtility>(sp =>
+{
+    var azureOpenAIClient = sp.GetRequiredService<AzureOpenAIClient>();
+    var azureOpenAIOptions = sp.GetRequiredService<IOptions<AzureOpenAIOptions>>();
+    var logger = sp.GetRequiredService<ILogger<ValidationUtility>>();
+    return new ValidationUtility(azureOpenAIClient, azureOpenAIOptions, logger);
 });
 
 builder.Services.AddHostedService<PolicyCheckerQueueService>();

@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "engagementLetterFileName": {
+      "type": "string"
+    },
+    "policyName": {
+      "type": "string"
+    },
+    "policyVersion": {
+      "type": "string"
+    },
+    "violations": {
+      "type": "string"
+    }
+  },
+  "required": [ "engagementLetter", "policyName", "policyVersion", "violations" ]
+}
