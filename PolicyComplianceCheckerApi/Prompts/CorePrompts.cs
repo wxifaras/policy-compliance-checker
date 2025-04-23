@@ -23,4 +23,33 @@ public record CorePrompts
                             
         return userPrompt;
     }
+
+    public static string GetEvalSystemPrompt(string violation, string llmResponseChunk)
+    {
+        var evaluationPrompt = $@"
+                You are an AI assistant tasked with evaluating the correctness of generated content. The generated content represents potential violations found in a policy. 
+                Your goal is to assess whether the generated content aligns with the ground truth content provided.
+
+                The evaluation is based on a 'correctness metric,' which measures how accurately the generated content identified potential policy violations and compares it to the ground truth content.
+                You will be provided with both the generated content and the ground truth content.
+
+                Your task is to:
+                1. Compare the generated content against the ground truth content.
+                2. Assign a rating based on the following scale:
+                   - **1**: The content is incorrect.
+                   - **3**: The content is partially correct but may lack key context or nuance, making it potentially misleading or incomplete compared to the ground truth content.
+                   - **5**: The content is correct and complete based on the ground truth content.
+
+                Additionally, you must provide a detailed explanation for the rating you selected.
+
+                **Important Notes**:
+                - The rating must always be one of the following values: 1, 3, or 5.
+                - Construct a JSON object containing the Rating and your Thoughts. Return this JSON object as the response.
+
+                **Input Data**:
+                - Ground truth content: {violation}
+                - Generated content: {llmResponseChunk}";
+
+        return evaluationPrompt;
+    }
 }

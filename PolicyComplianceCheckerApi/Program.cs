@@ -112,10 +112,10 @@ builder.Services.AddSingleton<IPolicyCheckerService>(sp =>
 
 builder.Services.AddSingleton<IValidationUtility>(sp =>
 {
-    var azureOpenAIClient = sp.GetRequiredService<AzureOpenAIClient>();
+    var azureOpenAIService = sp.GetRequiredService<IAzureOpenAIService>();
     var azureOpenAIOptions = sp.GetRequiredService<IOptions<AzureOpenAIOptions>>();
     var logger = sp.GetRequiredService<ILogger<ValidationUtility>>();
-    return new ValidationUtility(azureOpenAIClient, azureOpenAIOptions, logger);
+    return new ValidationUtility(azureOpenAIService, azureOpenAIOptions, logger);
 });
 
 builder.Services.AddHostedService<PolicyCheckerQueueService>();
