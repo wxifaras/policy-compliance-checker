@@ -1,7 +1,6 @@
 ﻿namespace PolicyComplianceCheckerApi.Models;
 
-public class ValidationResponse
+public record ValidationResponse
 {
     public Evaluation Evaluation { get; set; }
-
 }

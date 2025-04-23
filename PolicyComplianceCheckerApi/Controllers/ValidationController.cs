@@ -82,8 +82,8 @@ public class ValidationController : ControllerBase
                 request.EngagementLetterFileName,
                 request.PolicyName,
                 request.PolicyVersion,
-                "Validation"
-                 );
+                string.Empty);
+
             request.LLMResponse = policyCheckerResult.ViolationsContent;
             var response = await _validationUtility.EvaluateSearchResultAsync(request);
             validationResponses.Add(response);

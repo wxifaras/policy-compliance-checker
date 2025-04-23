@@ -1,6 +1,6 @@
 ﻿namespace PolicyComplianceCheckerApi.Models;
 
-public class ValidationRequest
+public record ValidationRequest
 {
     public string EngagementLetterFileName { get; set; }
     public string PolicyName { get; set; }
