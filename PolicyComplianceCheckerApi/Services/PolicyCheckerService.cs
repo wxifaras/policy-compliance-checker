@@ -108,7 +108,7 @@ public class PolicyCheckerService : IPolicyCheckerService
 
                 // Use Polly to retry AnalyzePolicy
                 var violation = await retryPolicy.ExecuteAsync(() =>
-                    _azureOpenAIService.AnalyzePolicy(engagementChunk, policyChunk));
+                    _azureOpenAIService.AnalyzePolicyAsync(engagementChunk, policyChunk));
 
                 if (!string.IsNullOrWhiteSpace(violation) && !violation.Contains("No violations found.", StringComparison.OrdinalIgnoreCase))
                 {

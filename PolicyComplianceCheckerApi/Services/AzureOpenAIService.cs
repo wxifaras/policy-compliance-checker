@@ -39,7 +39,7 @@ public class AzureOpenAIService : IAzureOpenAIService
 
     public int RetryDelayInSeconds => _retryDelayInSeconds;
 
-    public async Task<string> AnalyzePolicy(string engagementLetter, string policyChunk)
+    public async Task<string> AnalyzePolicyAsync(string engagementLetter, string policyChunk)
     {
         var systemPrompt = CorePrompts.GetSystemPrompt(engagementLetter);
         var userPrompt = CorePrompts.GetUserPrompt(policyChunk);
