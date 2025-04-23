@@ -1,14 +1,12 @@
-﻿namespace PolicyComplianceCheckerApi.Models
-{
-    public class Evaluation
-    {
-      
-        public string GeneratedContent { get; set; }
+﻿namespace PolicyComplianceCheckerApi.Models;
 
-        public int Rating { get; set; }
+public record Evaluation
+{ 
+    public string GeneratedContent { get; set; }
 
-        public string Thoughts { get; set; }
+    public int Rating { get; set; }
 
-        public string GroundTruthContent { get; set; }
-    }
+    public string Thoughts { get; set; }
+
+    public string GroundTruthContent { get; set; }
 }
