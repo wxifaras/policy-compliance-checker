@@ -21,9 +21,7 @@ public class AzureOpenAIService : IAzureOpenAIService
         ILogger<AzureOpenAIService> logger)
     {
         _logger = logger;
-
         _deploymentName = options.Value.DeploymentName;
-
         _maxTokens = options.Value.MaxTokens;
         _retryCount = options.Value.RetryCount;
         _retryDelayInSeconds = options.Value.RetryDelayInSeconds;
@@ -74,22 +72,6 @@ public class AzureOpenAIService : IAzureOpenAIService
          {
              ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat("Eval", BinaryData.FromString(evaluationSchema))
          });
-
-
-        return response.Value.Content[0].Text;
-    }
-
-    public async Task<string> SummarizeThoughtAsync(string combinedThoughts)
-    {
-        var systemPrompt = CorePrompts.GetSummarizeThoughtSystemPrompt(combinedThoughts);
-        var chatClient = _azureOpenAIClient.GetChatClient(_deploymentName);
-
-        List<ChatMessage> messages = new List<ChatMessage>()
-        {
-            new SystemChatMessage(systemPrompt)
-        };
-
-        var response = await chatClient.CompleteChatAsync(messages);
 
         return response.Value.Content[0].Text;
     }

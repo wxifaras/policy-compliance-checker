@@ -7,8 +7,6 @@ using PolicyComplianceCheckerApi.Models;
 using PolicyComplianceCheckerApi.Services;
 using Polly;
 using System.Text.Json;
-using System.Text;
-
 
 namespace PolicyComplianceCheckerApi.Validation;
 public interface IValidationUtility
@@ -19,8 +17,6 @@ public interface IValidationUtility
 public class ValidationUtility : IValidationUtility
 {
     private IAzureOpenAIService _azureOpenAIService;
-    private readonly string _azureOpenAIDeployment;
-    private readonly int _maxTokens;
     private readonly int _retryCount;
     private readonly int _retryDelayInSeconds;
     private readonly ILogger<ValidationUtility> _logger;
@@ -33,24 +29,16 @@ public class ValidationUtility : IValidationUtility
     {
         _azureOpenAIService = azureOpenAIService;
         var options = azureOpenAIOptions.Value;
-        _azureOpenAIDeployment = options.DeploymentName ?? throw new ArgumentNullException(nameof(options.DeploymentName));
-        _maxTokens = options.MaxTokens;
         _retryCount = options.RetryCount;
         _retryDelayInSeconds = options.RetryDelayInSeconds;
         _logger = logger;
-        _tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
     }
 
     public async Task<ValidationResponse> EvaluateSearchResultAsync(ValidationRequest validationRequest)
     {
         ValidationResponse validationResponse = new ValidationResponse();
         var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-        var violationsChunks = ChunkDocument(validationRequest.Violations, _maxTokens / 2);
-        var totalViolationsChunks = violationsChunks.Count;
-        var allEvaluations = new List<Evaluation>();
-        int violationsChunkNumber = 1;
-        int llmChunkNumber = 1;
-
+   
         var retryPolicy = Policy<string>
             .Handle<Exception>()
             .WaitAndRetryAsync(
@@ -60,94 +48,23 @@ public class ValidationUtility : IValidationUtility
                 {
                     _logger.LogWarning($"Validation Retry {retryCount} failed after {timespan.TotalSeconds}s: {exception}");
                 });
-
-        var largestEngagementChunkCount = _tokenizer.CountTokens(violationsChunks[0]);
-        var availableTokens = _maxTokens - largestEngagementChunkCount - 1000;
-        var llmResponseChunks = ChunkDocument(validationRequest.LLMResponse, availableTokens);
-
-        foreach (var violation in violationsChunks)
+   
+        var messageContentUpdates = await retryPolicy.ExecuteAsync(async () =>
         {
-            var violationTokensChunk = _tokenizer.CountTokens(violation);
-            _logger.LogInformation($"violationTokenCheck: {violationTokensChunk}");
+           return await _azureOpenAIService.AnalyzeWithSchemaAsync(validationRequest.Violations, validationRequest.LLMResponse);
+        });
 
-            foreach (var llmResponseChunk in llmResponseChunks)
-            {
-                var llmTokensChunk = _tokenizer.CountTokens(llmResponseChunk);
-                _logger.LogInformation($"llmTokenChunk: {llmTokensChunk}");
-
-                var messageContentUpdates = await retryPolicy.ExecuteAsync(async () =>
-                {
-                    return await _azureOpenAIService.AnalyzeWithSchemaAsync(violation, llmResponseChunk);
-                });
-
-                var evaluationResponse = JsonSerializer.Deserialize<Evaluation>(messageContentUpdates);
-
-                if (evaluationResponse != null)
-                {
-                      allEvaluations.Add(evaluationResponse);
-                }
-
-                _logger.LogInformation($"Processed llmresponseChunk for chunk {llmChunkNumber} of {llmResponseChunks.Count}.");
-                llmChunkNumber++;
-            }
-
-            _logger.LogInformation($"Processed violations chunk {violationsChunkNumber} of {violationsChunks.Count}.");
-            violationsChunkNumber++;
-        }
+        var evaluationResponse = JsonSerializer.Deserialize<Evaluation>(messageContentUpdates);
 
         validationResponse.Evaluation = new Evaluation
         {
             GeneratedContent = validationRequest.LLMResponse,
-            Rating = allEvaluations
-                .GroupBy(e => e.Rating)
-                .OrderByDescending(g => g.Count())
-                .ThenByDescending(g => g.Key)
-                .First().Key,
-            //can list the Thoughts from each evaluation instead of summarizing them
-            //Thoughts = string.Join("\n", allEvaluations.Select(e => e.Thoughts)),
-            //summarize the thoughts from multiple chunks
-            Thoughts = await SummarizeThoughtsAsync(allEvaluations.Select(e => e.Thoughts).ToList()),
+            Rating = evaluationResponse.Rating,
+            Thoughts = evaluationResponse.Thoughts,
             GroundTruthContent = validationRequest.Violations
         };
 
-        return validationResponse;
+       return validationResponse;
     }
 
-    private async Task<string> SummarizeThoughtsAsync(List<string> thoughts)
-    {
-        if (thoughts == null || !thoughts.Any())
-            return string.Empty;
-
-        if (thoughts.Count > 1)
-        {
-            var combinedThoughts = string.Join("\n", thoughts);
-
-            var result = await _azureOpenAIService.SummarizeThoughtAsync(combinedThoughts);
-
-            return result?.ToString() ?? string.Empty; // Ensure a non-null return value
-        }
-        else
-        {
-            return thoughts.FirstOrDefault() ?? string.Empty; // Ensure a non-null return value
-        }
-    }
-
-    private List<string> ChunkDocument(string source, int maxChunkSize)
-    {
-        var chunks = new List<string>();
-
-        // return a list of integers where each integer represents a token in the tokenizer's vocabulary
-        var tokenIds = _tokenizer.EncodeToIds(source).ToList();
-
-        // Go through all tokens and pull out as many tokens as will fit into the max chunk size
-        for (int i = 0; i < tokenIds.Count; i += maxChunkSize)
-        {
-            // get the tokens from the last position (i) in the list of tokens up through the max chunk size or the remaining tokens (tokens - i) so we don't go beyond the list bounds
-            var chunkTokens = tokenIds.GetRange(i, Math.Min(maxChunkSize, tokenIds.Count - i));
-            var chunk = _tokenizer.Decode(chunkTokens);
-            chunks.Add(chunk);
-        }
-
-        return chunks;
-    }
 }

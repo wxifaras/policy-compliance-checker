@@ -52,20 +52,4 @@ public record CorePrompts
 
         return evaluationPrompt;
     }
-
-    public static string GetSummarizeThoughtSystemPrompt(string combinedThoughts)
-    {
-        var summarizationPrompt = $@"
-            You are an AI assistant tasked with summarizing feedback from multiple evaluations.
-            Below is a list of detailed thoughts from various evaluations. Your task is to:
-
-            1. Provide a concise summary of the feedback in a few sentences.
-
-            **Detailed Thoughts**:
-            {combinedThoughts}
-
-            **Summary**:";
-
-        return summarizationPrompt;
-    }
 }
