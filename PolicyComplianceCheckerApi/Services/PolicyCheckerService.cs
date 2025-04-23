@@ -73,12 +73,7 @@ public class PolicyCheckerService : IPolicyCheckerService
             onRetry: (exception, timespan, retryCount, context) =>
             {
                 var message = exception?.Exception?.Message ?? "No exception message available";
-                _logger.LogWarning(
-                "Retry {RetryCount} failed after {DelaySeconds}s. Error: {ErrorMessage}",
-                retryCount,
-                timespan.TotalSeconds,
-                message
-                 );
+                _logger.LogWarning($"Retry {retryCount} encountered an error: {message}. Waiting {timespan} before next retry.");
             });
 
         // Token management strategy:
