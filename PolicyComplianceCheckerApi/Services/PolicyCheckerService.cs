@@ -217,11 +217,13 @@ public class PolicyCheckerService : IPolicyCheckerService
     {
         var chunks = new List<string>();
 
-        // Tokenize the source document
+        // return a list of integers where each integer represents a token in the tokenizer's vocabulary
         var tokenIds = _tokenizer.EncodeToIds(source).ToList();
 
+        // Go through all tokens and pull out as many tokens as will fit into the max chunk size
         for (int i = 0; i < tokenIds.Count; i += maxChunkSize)
         {
+            // get the tokens from the last position (i) in the list of tokens up through the max chunk size or the remaining tokens (tokens - i) so we don't go beyond the list bounds
             var chunkTokens = tokenIds.GetRange(i, Math.Min(maxChunkSize, tokenIds.Count - i));
             var chunk = _tokenizer.Decode(chunkTokens);
             chunks.Add(chunk);

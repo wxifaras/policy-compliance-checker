@@ -9,6 +9,7 @@ using Polly;
 using System.Text.Json;
 using System.Text;
 
+
 namespace PolicyComplianceCheckerApi.Validation;
 public interface IValidationUtility
 {
@@ -99,8 +100,7 @@ public class ValidationUtility : IValidationUtility
 
                 **Input Data**:
                 - Ground truth content: {violation}
-                - Generated content: {llmResponseChunk}
-            ";
+                - Generated content: {llmResponseChunk}";
 
                 var client = _azureOpenAIClient.GetChatClient(_azureOpenAIDeployment);
 
