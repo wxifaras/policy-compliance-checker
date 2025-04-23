@@ -45,9 +45,6 @@ public class ValidationUtility : IValidationUtility
     {
         ValidationResponse validationResponse = new ValidationResponse();
         var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-        var evaluationSchemaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Validation", "EvaluationSchema.json");
-        var evaluationSchema = await File.ReadAllTextAsync(evaluationSchemaPath);
-
         var violationsChunks = ChunkDocument(validationRequest.Violations, _maxTokens / 2);
         var totalViolationsChunks = violationsChunks.Count;
         var allEvaluations = new List<Evaluation>();

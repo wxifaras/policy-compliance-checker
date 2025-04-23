@@ -58,6 +58,8 @@ public class AzureOpenAIService : IAzureOpenAIService
 
     public async Task<string> AnalyzeWithSchemaAsync(string violation, string llmResponseChunk)
     {
+        var evaluationSchemaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Validation", "EvaluationSchema.json");
+        var evaluationSchema = await File.ReadAllTextAsync(evaluationSchemaPath);
         var systemPrompt = CorePrompts.GetEvalSystemPrompt(violation, llmResponseChunk);
         var chatClient = _azureOpenAIClient.GetChatClient(_deploymentName);
 
@@ -66,7 +68,13 @@ public class AzureOpenAIService : IAzureOpenAIService
             new SystemChatMessage(systemPrompt)
         };
 
-        var response = await chatClient.CompleteChatAsync(messages);
+        var response = await chatClient.CompleteChatAsync(
+         messages,
+         new ChatCompletionOptions
+         {
+             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat("Eval", BinaryData.FromString(evaluationSchema))
+         });
+
 
         return response.Value.Content[0].Text;
     }
