@@ -122,7 +122,7 @@ public class AzureStorageService : IAzureStorageService
         return policiesWithVersions;
     }
 
-    public async Task<BinaryData> ConvertSasUriToBinaryData(string sasUri)
+    public async Task<BinaryData> ConvertSasUriToBinaryDataAsync(string sasUri)
     {
         _logger.LogInformation($"Converting SAS URI to BinaryData: {sasUri}.");
 
