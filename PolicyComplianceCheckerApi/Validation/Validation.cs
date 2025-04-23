@@ -42,36 +42,41 @@ public class ValidationUtility : IValidationUtility
 
     public async Task<ValidationResponse> EvaluateSearchResultAsync(ValidationRequest validationRequest)
     {
-
         ValidationResponse validationResponse = new ValidationResponse();
         var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
         var evaluationSchemaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Validation", "EvaluationSchema.json");
         var evaluationSchema = await File.ReadAllTextAsync(evaluationSchemaPath);
 
-        var violationsChunks = ChunkDocument(validationRequest.Violations, _maxTokens / 2); // Use MaxTokens from options
-        var totalviolationsChunks = violationsChunks.Count;
-        var processedChunks = 0;
+        var violationsChunks = ChunkDocument(validationRequest.Violations, _maxTokens / 2);
+        var totalViolationsChunks = violationsChunks.Count;
         var allEvaluations = new List<Evaluation>();
-        int chunkNumber = 1;
+        int violationsChunkNumber = 1;
+        int llmChunkNumber = 1;
 
         var retryPolicy = Policy<string>
             .Handle<Exception>()
             .WaitAndRetryAsync(
-                retryCount: _retryCount, // Use RetryCount from options
-                sleepDurationProvider: _ => TimeSpan.FromSeconds(_retryDelayInSeconds), // Use RetryDelayInSeconds from options
+                retryCount: _retryCount,
+                sleepDurationProvider: _ => TimeSpan.FromSeconds(_retryDelayInSeconds),
                 onRetry: (exception, timespan, retryCount, context) =>
                 {
                     _logger.LogWarning($"Validation Retry {retryCount} failed after {timespan.TotalSeconds}s: {exception}");
                 });
 
         var largestEngagementChunkCount = _tokenizer.CountTokens(violationsChunks[0]);
-        var availableTokens = _maxTokens - largestEngagementChunkCount - 1000; // Reserve buffer
+        var availableTokens = _maxTokens - largestEngagementChunkCount - 1000;
+        var llmResponseChunks = ChunkDocument(validationRequest.LLMResponse, availableTokens);
 
-        var llmresponseChunks = ChunkDocument(validationRequest.LLMResponse, availableTokens);
         foreach (var violation in violationsChunks)
         {
-            foreach (var llmresponseChunk in llmresponseChunks)
+            var violationTokensChunk = _tokenizer.CountTokens(violation);
+            _logger.LogInformation($"violationTokenCheck: {violationTokensChunk}");
+
+            foreach (var llmResponseChunk in llmResponseChunks)
             {
+                var llmTokensChunk = _tokenizer.CountTokens(llmResponseChunk);
+                _logger.LogInformation($"llmTokenChunk: {llmTokensChunk}");
+
                 var evaluationPrompt = $@"
                 You are an AI assistant tasked with evaluating the correctness of generated content. The generated content represents potential violations found in a policy. 
                 Your goal is to assess whether the generated content aligns with the ground truth content provided.
@@ -90,11 +95,11 @@ public class ValidationUtility : IValidationUtility
 
                 **Important Notes**:
                 - The rating must always be one of the following values: 1, 3, or 5.
-                - Construct a JSON object containing the Generated Content, Rating, your Thoughts, and the ground truth content. Return this JSON object as the response.
+                - Construct a JSON object containing the Rating and your Thoughts. Return this JSON object as the response.
 
                 **Input Data**:
                 - Ground truth content: {violation}
-                - Generated content: {llmresponseChunk}
+                - Generated content: {llmResponseChunk}
             ";
 
                 var client = _azureOpenAIClient.GetChatClient(_azureOpenAIDeployment);
@@ -104,7 +109,6 @@ public class ValidationUtility : IValidationUtility
                     new SystemChatMessage(evaluationPrompt)
                 };
 
-                // Use Polly to handle retries and rate-limiting
                 var messageContentUpdates = await retryPolicy.ExecuteAsync(async () =>
                 {
                     var result = await client.CompleteChatAsync(
@@ -114,7 +118,6 @@ public class ValidationUtility : IValidationUtility
                             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat("Eval", BinaryData.FromString(evaluationSchema))
                         });
 
-                    // Extract the content from the result
                     return result.Value.Content[0].Text;
                 });
 
@@ -122,23 +125,71 @@ public class ValidationUtility : IValidationUtility
 
                 if (evaluationResponse != null)
                 {
-                    allEvaluations.Add(evaluationResponse);
+                      allEvaluations.Add(evaluationResponse);
                 }
+
+                _logger.LogInformation($"Processed llmresponseChunk for chunk {llmChunkNumber} of {llmResponseChunks.Count}.");
+                llmChunkNumber++;
             }
 
-            _logger.LogInformation($"Processed chunk {chunkNumber} of {violationsChunks.Count}.");
-            chunkNumber++;
+            _logger.LogInformation($"Processed violations chunk {violationsChunkNumber} of {violationsChunks.Count}.");
+            violationsChunkNumber++;
         }
 
         validationResponse.Evaluation = new Evaluation
         {
-            GeneratedContent = string.Join("\n", allEvaluations.Select(e => e.GeneratedContent)),
-            Rating = (int)allEvaluations.Average(e => e.Rating),
-            Thoughts = string.Join("\n", allEvaluations.Select(e => e.Thoughts)),
+            GeneratedContent = validationRequest.LLMResponse,
+            Rating = allEvaluations
+                .GroupBy(e => e.Rating)
+                .OrderByDescending(g => g.Count())
+                .ThenByDescending(g => g.Key)
+                .First().Key,
+            //can list the Thoughts from each evaluation instead of summarizing them
+            //Thoughts = string.Join("\n", allEvaluations.Select(e => e.Thoughts)),
+            //summarize the thoughts from multiple chunks
+            Thoughts = await SummarizeThoughtsAsync(allEvaluations.Select(e => e.Thoughts).ToList()),
             GroundTruthContent = validationRequest.Violations
         };
 
         return validationResponse;
+    }
+
+    private async Task<string> SummarizeThoughtsAsync(List<string> thoughts)
+    {
+        if (thoughts == null || !thoughts.Any())
+            return string.Empty;
+
+        if (thoughts.Count > 1)
+        {
+            var combinedThoughts = string.Join("\n", thoughts);
+
+            // Create a prompt for the LLM to summarize the thoughts
+            var summarizationPrompt = $@"
+            You are an AI assistant tasked with summarizing feedback from multiple evaluations.
+            Below is a list of detailed thoughts from various evaluations. Your task is to:
+
+            1. Provide a concise summary of the feedback in a few sentences.
+
+            **Detailed Thoughts**:
+            {combinedThoughts}
+
+            **Summary**:";
+
+            var client = _azureOpenAIClient.GetChatClient(_azureOpenAIDeployment);
+
+            var messageContent = new List<ChatMessage>
+            {
+               new SystemChatMessage(summarizationPrompt)
+            };
+
+            var result = await client.CompleteChatAsync(messageContent);
+
+           return result.Value.Content[0].Text.ToString();
+        }
+        else
+        {
+           return thoughts.FirstOrDefault();
+        }
     }
 
     private List<string> ChunkDocument(string source, int maxChunkSize)
