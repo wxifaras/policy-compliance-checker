@@ -72,7 +72,8 @@ public class PolicyCheckerService : IPolicyCheckerService
             sleepDurationProvider: _ => TimeSpan.FromSeconds(_azureOpenAIService.RetryDelayInSeconds),
             onRetry: (exception, timespan, retryCount, context) =>
             {
-                _logger.LogWarning($"Retry {retryCount} failed after {timespan.TotalSeconds}s: {exception}");
+                var message = exception?.Exception?.Message ?? "No exception message available";
+                _logger.LogWarning($"Retry {retryCount} encountered an error: {message}. Waiting {timespan} before next retry.");
             });
 
         // Token management strategy:
@@ -108,7 +109,7 @@ public class PolicyCheckerService : IPolicyCheckerService
 
                 // Use Polly to retry AnalyzePolicy
                 var violation = await retryPolicy.ExecuteAsync(() =>
-                    _azureOpenAIService.AnalyzePolicy(engagementChunk, policyChunk));
+                    _azureOpenAIService.AnalyzePolicyAsync(engagementChunk, policyChunk));
 
                 if (!string.IsNullOrWhiteSpace(violation) && !violation.Contains("No violations found.", StringComparison.OrdinalIgnoreCase))
                 {
@@ -165,7 +166,7 @@ public class PolicyCheckerService : IPolicyCheckerService
                 PolicyViolationsFile = violationsFileName
             };
 
-            await _cosmosDBService.AddEngagementLogAsync(engagementLog);
+            await _cosmosDBService.AddLogAsync<EngagementLog>(engagementLog);
 
             var policyCheckerResult = new PolicyCheckerResult
             {

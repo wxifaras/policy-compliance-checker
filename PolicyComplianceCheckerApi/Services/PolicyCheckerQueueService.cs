@@ -52,8 +52,11 @@ public class PolicyCheckerQueueService : BackgroundService
 
                     // Send the violationsSas to SignalR hub
                     await _azureSignalRService.SendPolicyResultAsync(policyRequest.UserId, policyCheckerResult);
+
                     // Delete the message after processing
                     await _queueClient.DeleteMessageAsync(message.MessageId, message.PopReceipt, stoppingToken);
+
+                    _logger.LogInformation("Message processed and deleted: {message}", message.MessageText);
                 }
                 catch (Exception ex)
                 {
