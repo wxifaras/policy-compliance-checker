@@ -60,7 +60,7 @@ public class PolicyCheckerService : IPolicyCheckerService
         var allViolations = new StringBuilder();
 
         //Instead of analyzing the entire engagement letter at once, we now split it into smaller pieces 
-        var engagementChunks = ChunkDocument(engagementLetterContent, _azureOpenAIService.MaxTokens / 2); // Safe split
+        var engagementChunks = ChunkDocument(engagementLetterContent, _azureOpenAIService.MaxTokens / 2);
 
         var totalChunks = engagementChunks.Count;
         var processedChunks = 0;
@@ -125,43 +125,59 @@ public class PolicyCheckerService : IPolicyCheckerService
             }
         }
 
-        var violationsSas = string.Empty;
-        if (allViolations.Length == 0)
+        if (userId == "Validation")
         {
-            _logger.LogInformation($"No violations found in the engagement letter: {engagementLetter} for policy: {policyFileName}.");
+            _logger.LogInformation($"Validation");
+            var policyCheckerResult = new PolicyCheckerResult
+            {
+                EngagementLetterName = engagementLetter,
+                ViolationsContent = allViolations.ToString(),
+                PolicyFileName = policyFileName,
+                PolicyVersion = versionId
+            };
+            _logger.LogInformation($"ValidationsContent: {policyCheckerResult.ViolationsContent}");
+            return policyCheckerResult;
         }
         else
         {
-            violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
-            var binaryData = BinaryData.FromString(allViolations.ToString());
+            var violationsSas = string.Empty;
+            if (allViolations.Length == 0)
+            {
+                _logger.LogInformation($"No violations found in the engagement letter: {engagementLetter} for policy: {policyFileName}.");
+            }
+            else
+            {
+                violationsFileName = $"{Path.GetFileNameWithoutExtension(engagementLetter)}_Violations.MD";
+                var binaryData = BinaryData.FromString(allViolations.ToString());
 
-            await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, violationsFileName);
+                await _azureStorageService.UploadFileToEngagementsContainerAsync(binaryData, violationsFileName);
 
-            binaryData = BinaryData.FromString(engagementLetterContent);
-            violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
+                binaryData = BinaryData.FromString(engagementLetterContent);
+                violationsSas = await _azureStorageService.GetEngagementSasUriAsync(violationsFileName);
+            }
+
+            var engagementLog = new EngagementLog
+            {
+                DocumentType = DocumentType.Engagement.ToString(),
+                UserId = userId,
+                EngagementLetter = engagementLetter,
+                PolicyFile = policyFileName,
+                PolicyFileVersionId = versionId,
+                PolicyViolationsFile = violationsFileName
+            };
+
+            await _cosmosDBService.AddLogAsync<EngagementLog>(engagementLog);
+
+            var policyCheckerResult = new PolicyCheckerResult
+            {
+                EngagementLetterName = engagementLetter,
+                ViolationsSasUri = violationsSas,
+                PolicyFileName = policyFileName,
+                PolicyVersion = versionId
+            };
+
+            return policyCheckerResult;
         }
-
-        var engagementLog = new EngagementLog
-        {
-            DocumentType = DocumentType.Engagement.ToString(),
-            UserId = userId,
-            EngagementLetter = engagementLetter,
-            PolicyFile = policyFileName,
-            PolicyFileVersionId = versionId,
-            PolicyViolationsFile = violationsFileName
-        };
-
-        await _cosmosDBService.AddLogAsync<EngagementLog>(engagementLog);
-
-        var policyCheckerResult = new PolicyCheckerResult
-        {
-            EngagementLetterName = engagementLetter,
-            ViolationsSasUri = violationsSas,
-            PolicyFileName = policyFileName,
-            PolicyVersion = versionId
-        };
-
-        return policyCheckerResult;
     }
 
     private async Task<string> ReadDocumentContentAsync(Uri documentUri)

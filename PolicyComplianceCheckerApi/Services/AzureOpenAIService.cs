@@ -21,9 +21,7 @@ public class AzureOpenAIService : IAzureOpenAIService
         ILogger<AzureOpenAIService> logger)
     {
         _logger = logger;
-
         _deploymentName = options.Value.DeploymentName;
-
         _maxTokens = options.Value.MaxTokens;
         _retryCount = options.Value.RetryCount;
         _retryDelayInSeconds = options.Value.RetryDelayInSeconds;
@@ -52,6 +50,28 @@ public class AzureOpenAIService : IAzureOpenAIService
         };
 
         var response = await chatClient.CompleteChatAsync(messages);
+
+        return response.Value.Content[0].Text;
+    }
+
+    public async Task<string> AnalyzeWithSchemaAsync(string violation, string llmResponseChunk)
+    {
+        var evaluationSchemaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Validation", "EvaluationSchema.json");
+        var evaluationSchema = await File.ReadAllTextAsync(evaluationSchemaPath);
+        var systemPrompt = CorePrompts.GetEvalSystemPrompt(violation, llmResponseChunk);
+        var chatClient = _azureOpenAIClient.GetChatClient(_deploymentName);
+
+        List<ChatMessage> messages = new List<ChatMessage>()
+        {
+            new SystemChatMessage(systemPrompt)
+        };
+
+        var response = await chatClient.CompleteChatAsync(
+         messages,
+         new ChatCompletionOptions
+         {
+             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat("Eval", BinaryData.FromString(evaluationSchema))
+         });
 
         return response.Value.Content[0].Text;
     }

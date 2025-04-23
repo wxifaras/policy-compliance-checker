@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "properties": {
+    "Rating": {
+      "type": "integer"
+    },
+    "Thoughts": {
+      "type": "string"
+    }
+  },
+  "required": [ "Rating", "Thoughts" ]
+}
