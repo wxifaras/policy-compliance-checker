@@ -72,7 +72,13 @@ public class PolicyCheckerService : IPolicyCheckerService
             sleepDurationProvider: _ => TimeSpan.FromSeconds(_azureOpenAIService.RetryDelayInSeconds),
             onRetry: (exception, timespan, retryCount, context) =>
             {
-                _logger.LogWarning($"Retry {retryCount} failed after {timespan.TotalSeconds}s: {exception}");
+                var message = exception?.Exception?.Message ?? "No exception message available";
+                _logger.LogWarning(
+                "Retry {RetryCount} failed after {DelaySeconds}s. Error: {ErrorMessage}",
+                retryCount,
+                timespan.TotalSeconds,
+                message
+                 );
             });
 
         var largestEngagementChunkCount = _tokenizer.CountTokens(engagementChunks[0]);
