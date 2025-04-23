@@ -125,32 +125,13 @@ public class ValidationUtility : IValidationUtility
         {
             var combinedThoughts = string.Join("\n", thoughts);
 
-            // Create a prompt for the LLM to summarize the thoughts
-            var summarizationPrompt = $@"
-            You are an AI assistant tasked with summarizing feedback from multiple evaluations.
-            Below is a list of detailed thoughts from various evaluations. Your task is to:
+            var result = await _azureOpenAIService.SummarizeThoughtAsync(combinedThoughts);
 
-            1. Provide a concise summary of the feedback in a few sentences.
-
-            **Detailed Thoughts**:
-            {combinedThoughts}
-
-            **Summary**:";
-
-            var client = _azureOpenAIClient.GetChatClient(_azureOpenAIDeployment);
-
-            var messageContent = new List<ChatMessage>
-            {
-               new SystemChatMessage(summarizationPrompt)
-            };
-
-            var result = await client.CompleteChatAsync(messageContent);
-
-           return result.Value.Content[0].Text.ToString();
+            return result?.ToString() ?? string.Empty; // Ensure a non-null return value
         }
         else
         {
-           return thoughts.FirstOrDefault();
+            return thoughts.FirstOrDefault() ?? string.Empty; // Ensure a non-null return value
         }
     }
 

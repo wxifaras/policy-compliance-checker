@@ -70,4 +70,19 @@ public class AzureOpenAIService : IAzureOpenAIService
 
         return response.Value.Content[0].Text;
     }
+
+    public async Task<string> SummarizeThoughtAsync(string combinedThoughts)
+    {
+        var systemPrompt = CorePrompts.GetSummarizeThoughtSystemPrompt(combinedThoughts);
+        var chatClient = _azureOpenAIClient.GetChatClient(_deploymentName);
+
+        List<ChatMessage> messages = new List<ChatMessage>()
+        {
+            new SystemChatMessage(systemPrompt)
+        };
+
+        var response = await chatClient.CompleteChatAsync(messages);
+
+        return response.Value.Content[0].Text;
+    }
 }
