@@ -158,7 +158,8 @@ public class PolicyCheckerService : IPolicyCheckerService
             EngagementLetterName = engagementLetter,
             ViolationsSasUri = violationsSas,
             PolicyFileName = policyFileName,
-            PolicyVersion = versionId
+            PolicyVersion = versionId,
+            ViolationsContent = allViolations.ToString(),
         };
 
         return policyCheckerResult;
