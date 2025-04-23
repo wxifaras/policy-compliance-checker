@@ -31,9 +31,6 @@
     <Content Update="Validation\EvaluationSchema.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Validation\GroundTruthDocSchema.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
 </Project>
