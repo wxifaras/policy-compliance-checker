@@ -55,6 +55,8 @@ builder.Services.AddOptions<AzureDocIntelOptions>()
            .Bind(builder.Configuration.GetSection(AzureDocIntelOptions.AzureDocIntel))
            .ValidateDataAnnotations();
 
+builder.Services.Configure<ChunkingOptions>(builder.Configuration.GetSection("ChunkingOptions"));
+
 builder.Services.AddSingleton(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Program>>();
@@ -104,10 +106,11 @@ builder.Services.AddSingleton<IPolicyCheckerService>(sp =>
     var azureOpenAIService = sp.GetRequiredService<IAzureOpenAIService>();
     var azureStorageService = sp.GetRequiredService<IAzureStorageService>();
     var azureDocIntelOptions = sp.GetRequiredService<IOptions<AzureDocIntelOptions>>();
+    var chunkingOptions = sp.GetRequiredService<IOptions<ChunkingOptions>>();
     var azureSignalRService = sp.GetRequiredService<IAzureSignalRService>();
     var cosmosDbService = sp.GetRequiredService<IAzureCosmosDBService>();
 
-    return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions, azureSignalRService, cosmosDbService);
+    return new PolicyCheckerService(logger, azureOpenAIService, azureStorageService, azureDocIntelOptions, chunkingOptions, azureSignalRService, cosmosDbService);
 });
 
 builder.Services.AddSingleton<IValidationUtility>(sp =>
