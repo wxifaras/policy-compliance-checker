@@ -6,6 +6,7 @@ using PolicyComplianceCheckerApi.Models;
 using System.Text;
 using Polly;
 using Polly.Retry;
+using concierge_agent_api.Models;
 
 namespace PolicyComplianceCheckerApi.Services;
 
