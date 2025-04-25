@@ -208,12 +208,12 @@ public class PolicyCheckerService : IPolicyCheckerService
         var chunks = new List<string>();
 
         // Calculate overlap size as % of the maxChunkSize
-        int overlapSize = (int)(maxChunkSize * _chunkingOptions.OverlapPercentage);
+        var overlapSize = (int)(maxChunkSize * _chunkingOptions.OverlapPercentage);
 
         // Return a list of integers where each integer represents a token in the tokenizer's vocabulary
         var tokenIds = _tokenizer.EncodeToIds(source).ToList();
 
-        int i = 0;
+        var i = 0;
         while (i < tokenIds.Count)
         {
             // Get the tokens from the current position up to the max chunk size or the remaining tokens
