@@ -19,7 +19,7 @@ public class PolicyCheckerService : IPolicyCheckerService
     private readonly DocumentIntelligenceClient _documentIntelligenceClient;
     private readonly IAzureSignalRService _azureSignalRService;
     private readonly IAzureCosmosDBService _cosmosDBService;
-    private readonly ChunkingOptions _chunkingOptions;
+    private readonly float _overlapPercentage;
 
     public PolicyCheckerService(
         ILogger<PolicyCheckerService> logger,
@@ -41,7 +41,7 @@ public class PolicyCheckerService : IPolicyCheckerService
             new AzureKeyCredential(docIntelOptions.Value.ApiKey));
 
         _cosmosDBService = cosmosDBService;
-        _chunkingOptions = chunkingOptions.Value;
+        _overlapPercentage = chunkingOptions.Value.OverlapPercentage;
     }
 
     /// <summary>
@@ -208,7 +208,7 @@ public class PolicyCheckerService : IPolicyCheckerService
         var chunks = new List<string>();
 
         // Calculate overlap size as % of the maxChunkSize
-        var overlapSize = (int)(maxChunkSize * _chunkingOptions.OverlapPercentage);
+        var overlapSize = (int)(maxChunkSize * _overlapPercentage);
 
         // Return a list of integers where each integer represents a token in the tokenizer's vocabulary
         var tokenIds = _tokenizer.EncodeToIds(source).ToList();
