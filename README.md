@@ -69,6 +69,9 @@ The application requires configuration for various Azure services.
   },
   "ConnectionStrings": {
     "AzureSignalR": "<your-signalr-connection-string>"
+  },
+  "ChunkingOptions": {
+    "OverlapPercentage": 0.0
   }
 }
 ```
