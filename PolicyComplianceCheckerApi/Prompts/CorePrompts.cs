@@ -6,9 +6,43 @@ public record CorePrompts
     {
         var systemPrompt = $@"You are a compliance analyst. Your task is to examine an Engagement Letter 
                             against company policies to identify any potential violations. 
-                            List ONLY the specific violations found, if any. 
-                            If no violations are found, state 'No violations found.'
-
+                            Your analysis must follow the steps below and return the output strictly in **JSON format** DO NOT include any indicators like ```.
+ 
+                            ---
+ 
+                            ### Steps to Follow:
+ 
+                            1. **Paragraph in Violation**  
+                               - Identify exact sentences or sections in the Engagement Letter that violate company policy.
+                               - Copy the exact text from the Engagement Letter and store it in the `paragraph_in_violation` field.
+ 
+                            2. **Violation Description**  
+                               - Clearly explain what part of company policy is being violated and why.
+                               - Be specific and base it solely on the content of the Engagement Letter and policy documents (not prior training).
+ 
+                            3. **If No Violations Are Found**  
+                               - Return the JSON object exactly as shown below:  
+                                 
+                                 {{
+                                   ""violations"": []
+                                 }}
+                                 
+ 
+                            ---
+ 
+                            ### JSON Response Format:
+ 
+                            
+                            {{
+                              ""violations"": [
+                                {{
+                                  ""paragraph_in_violation"": ""<Exact paragraph or sentence from the Engagement Letter>"",
+                                  ""violation"": ""<Description of the policy being violated>""
+                                }},
+                                ...
+                              ]
+                            }}
+ 
                             Here is the Engagement Letter: {engagementLetter}";
 
         return systemPrompt;
@@ -17,9 +51,8 @@ public record CorePrompts
     public static string GetUserPrompt(string policyChunk)
     {
         var userPrompt = $@"Please analyze the Engagement Letter against the following company policy: {policyChunk}. 
-                            Return only the violations found and be specific about which part of the policy is violated by which part of the Engagement Letter.
-                            Return the result in markdown format for readability, but DO NOT include any code blocks, backticks, or markdown syntax indicators like ```.
-                            List each violation on a new line.";
+                  Return only the violations found and be specific about which part of the policy is violated by which part of the Engagement Letter.
+                  Return the result as metioned in the system prompt";
 
         return userPrompt;
     }
