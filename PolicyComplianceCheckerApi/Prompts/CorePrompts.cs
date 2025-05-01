@@ -26,12 +26,10 @@ public record CorePrompts
                                  {{
                                    ""violations"": []
                                  }}
-                                 
  
                             ---
  
                             ### JSON Response Format:
- 
                             
                             {{
                               ""violations"": [
