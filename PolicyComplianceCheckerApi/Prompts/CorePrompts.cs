@@ -20,13 +20,6 @@ public record CorePrompts
                                - Clearly explain what part of company policy is being violated and why.
                                - Be specific and base it solely on the content of the Engagement Letter and policy documents (not prior training).
  
-                            3. **If No Violations Are Found**  
-                               - Return the JSON object exactly as shown below:  
-                                 
-                                 {{
-                                   ""violations"": []
-                                 }}
- 
                             ---
  
                             ### JSON Response Format:
